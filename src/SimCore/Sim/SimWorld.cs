@@ -43,13 +43,15 @@ public sealed class SimWorld
         switch (cmd)
         {
             case MoveCommand mv:
+                var (tx, ty) = Map.WorldToCell(mv.Target);
+                var field = FlowField.Compute(Map, tx, ty); // shared by all units in this command
                 foreach (var id in mv.UnitIds)
                 {
                     var u = GetUnit(id);
                     if (u is null || u.OwnerId != mv.PlayerId) continue;
                     u.HasMoveOrder = true;
                     u.MoveTarget = mv.Target;
-                    u.Path = null; // recomputed by pathfinding (Task 8)
+                    u.Path = field;
                 }
                 break;
         }
@@ -60,16 +62,32 @@ public sealed class SimWorld
         foreach (var u in _units)
         {
             if (!u.HasMoveOrder) continue;
-            var delta = u.MoveTarget - u.Position;
-            var dist = delta.Length();
-            if (dist <= u.SpeedPerTick)
+
+            var (cx, cy) = Map.WorldToCell(u.Position);
+            var (ttx, tty) = Map.WorldToCell(u.MoveTarget);
+
+            FixVec step;
+            if (cx == ttx && cy == tty)
             {
-                u.Position = u.MoveTarget;
-                u.HasMoveOrder = false;
+                // final cell: home in on the exact target point
+                step = u.MoveTarget - u.Position;
             }
             else
             {
-                u.Position += delta.Normalized() * u.SpeedPerTick;
+                var (dx, dy) = u.Path!.DirectionAt(cx, cy);
+                if (dx == 0 && dy == 0) { u.HasMoveOrder = false; u.Path = null; continue; } // unreachable
+                step = Map.CellCenter(cx + dx, cy + dy) - u.Position;
+            }
+
+            var dist = step.Length();
+            if (dist <= u.SpeedPerTick)
+            {
+                u.Position += step;
+                if (cx == ttx && cy == tty) { u.HasMoveOrder = false; u.Path = null; }
+            }
+            else
+            {
+                u.Position += step.Normalized() * u.SpeedPerTick;
             }
         }
     }
