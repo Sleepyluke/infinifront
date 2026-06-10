@@ -4,8 +4,12 @@ namespace SimCore.Sim;
 
 public sealed partial class SimWorld
 {
-    /// <summary>Runs after commands, before movement. Iteration over _units (stable order):
-    /// earlier-spawned units strike first within a tick — deterministic first-mover rule.</summary>
+    /// <summary>Runs after commands, before movement. Damage exchange is symmetric within a
+    /// tick: a unit brought to 0 Hp earlier in the pass still fires (attacker Hp is not
+    /// checked), so mutual kills are possible and spawn order grants no damage advantage.
+    /// Spawn order only affects overkill suppression: once a target is at 0 Hp, later
+    /// attackers see target.Hp <= 0, clear their order, and skip the wasted hit. All
+    /// iteration is over _units (stable order) — deterministic.</summary>
     private void UpdateCombat()
     {
         // Pass 1: cooldowns tick down for everyone.

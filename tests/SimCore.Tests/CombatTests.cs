@@ -77,4 +77,21 @@ public class CombatTests
         Assert.Equal(50, w.GetUnit(victim)!.Hp);
         Assert.Equal(0, w.GetUnit(pacifist)!.AttackTargetId);
     }
+
+    [Fact]
+    public void Simultaneous_Lethal_Exchange_Kills_Both()
+    {
+        // Symmetric-exchange rule: the earlier-spawned unit's killing blow does not
+        // prevent the later-spawned unit from firing back within the same tick.
+        var w = NewWorld();
+        var a = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 10, TestWeapon());
+        var b = w.SpawnUnit(1, w.Map.CellCenter(6, 5), Fix.FromFraction(1, 2), 10, TestWeapon());
+        w.Step(new Command[]
+        {
+            new AttackCommand(0, new[] { a }, b),
+            new AttackCommand(1, new[] { b }, a),
+        });
+        Assert.Null(w.GetUnit(a));
+        Assert.Null(w.GetUnit(b));
+    }
 }
