@@ -12,6 +12,7 @@ public sealed class SimWorld
     private readonly List<Unit> _units = new(); // stable order — required for determinism
     private readonly Dictionary<int, Unit> _byId = new();
     private readonly Dictionary<(int, int), FlowField> _fieldCache = new(); // lookup only — never iterated
+    private int _fieldCacheVersion; // Map.Version the cache was built against
     private int _nextId = 1;
 
     public SimWorld(MapGrid map, ulong seed)
@@ -31,9 +32,15 @@ public sealed class SimWorld
         return u.Id;
     }
 
-    /// <summary>Per-tick flow-field cache: one Compute per target cell per Step.</summary>
+    /// <summary>Per-tick flow-field cache: one Compute per target cell per Step.
+    /// Version-guarded so a mid-Step passability change can never serve a stale field.</summary>
     private FlowField GetField(int targetCellX, int targetCellY)
     {
+        if (_fieldCacheVersion != Map.Version)
+        {
+            _fieldCache.Clear();
+            _fieldCacheVersion = Map.Version;
+        }
         if (!_fieldCache.TryGetValue((targetCellX, targetCellY), out var f))
         {
             f = FlowField.Compute(Map, targetCellX, targetCellY);
@@ -45,7 +52,6 @@ public sealed class SimWorld
     /// <summary>Advance one tick. Commands are applied first, then systems run in fixed order.</summary>
     public void Step(IReadOnlyList<Command> commands)
     {
-        _fieldCache.Clear();
         foreach (var cmd in commands) Apply(cmd);
         MoveUnits();
         RemoveDead();
