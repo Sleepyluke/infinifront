@@ -42,4 +42,36 @@ public class StateHasherTests
         b.Step(System.Array.Empty<Command>());
         Assert.NotEqual(StateHasher.Hash(a), StateHasher.Hash(b));
     }
+
+    [Fact]
+    public void MoveTarget_Change_Changes_Hash()
+    {
+        var a = World();
+        var b = World();
+        b.GetUnit(1)!.MoveTarget = FixVec.FromInts(9, 9);
+        Assert.NotEqual(StateHasher.Hash(a), StateHasher.Hash(b));
+    }
+
+    [Fact]
+    public void Rng_Draw_Changes_Hash()
+    {
+        var a = World();
+        var b = World();
+        b.Rng.NextUInt();
+        Assert.NotEqual(StateHasher.Hash(a), StateHasher.Hash(b));
+    }
+
+    [Fact]
+    public void Weapon_Cooldown_Changes_Hash()
+    {
+        var a = World();
+        var b = World();
+        var weaponA = new Weapon { Damage = 5, Range = Fix.FromInt(2), CooldownTicks = 4 };
+        var weaponB = new Weapon { Damage = 5, Range = Fix.FromInt(2), CooldownTicks = 4 };
+        a.GetUnit(1)!.Weapon = weaponA;
+        b.GetUnit(1)!.Weapon = weaponB;
+        Assert.Equal(StateHasher.Hash(a), StateHasher.Hash(b));   // identical weapons → equal
+        weaponB.CooldownRemaining = 3;
+        Assert.NotEqual(StateHasher.Hash(a), StateHasher.Hash(b)); // cooldown drift → detected
+    }
 }

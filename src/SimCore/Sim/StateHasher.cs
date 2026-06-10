@@ -5,10 +5,15 @@ public static class StateHasher
     private const ulong FnvOffset = 14695981039346656037UL;
     private const ulong FnvPrime = 1099511628211UL;
 
+    /// <summary>CONVENTION: every mutable sim field MUST be folded in here. When you add sim
+    /// state, add it to this method and re-pin GoldenTrajectoryHash in the same commit.
+    /// Unit.Path and Unit.PathVersion are deliberately excluded: derived caches, recomputed
+    /// from hashed state (MoveTarget + map).</summary>
     public static ulong Hash(SimWorld world)
     {
         var h = FnvOffset;
         h = Mix(h, (ulong)world.Tick);
+        h = Mix(h, world.Rng.State);
         foreach (var u in world.Units) // List order is stable → deterministic
         {
             h = Mix(h, (ulong)u.Id);
@@ -16,6 +21,22 @@ public static class StateHasher
             h = Mix(h, (ulong)u.Position.X.Raw);
             h = Mix(h, (ulong)u.Position.Y.Raw);
             h = Mix(h, (ulong)u.Hp);
+            h = Mix(h, (ulong)u.SpeedPerTick.Raw);
+            h = Mix(h, u.HasMoveOrder ? 1UL : 0UL);
+            h = Mix(h, (ulong)u.MoveTarget.X.Raw);
+            h = Mix(h, (ulong)u.MoveTarget.Y.Raw);
+            h = Mix(h, u.IsAttackMoving ? 1UL : 0UL);
+            h = Mix(h, (ulong)u.AttackMoveDest.X.Raw);
+            h = Mix(h, (ulong)u.AttackMoveDest.Y.Raw);
+            h = Mix(h, (ulong)u.AttackTargetId);
+            h = Mix(h, u.Weapon is null ? 0UL : 1UL);
+            if (u.Weapon is { } w)
+            {
+                h = Mix(h, (ulong)w.Damage);
+                h = Mix(h, (ulong)w.Range.Raw);
+                h = Mix(h, (ulong)w.CooldownTicks);
+                h = Mix(h, (ulong)w.CooldownRemaining);
+            }
         }
         return h;
     }
