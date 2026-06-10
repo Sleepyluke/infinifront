@@ -27,4 +27,30 @@ public class DeterministicRandomTests
         for (int i = 0; i < 1000; i++)
             Assert.InRange(r.NextInt(5, 10), 5, 9); // max exclusive
     }
+
+    [Fact]
+    public void NextInt_Throws_On_Empty_Range()
+    {
+        var r = new DeterministicRandom(7);
+        Assert.Throws<System.ArgumentOutOfRangeException>(() => r.NextInt(5, 5));
+    }
+
+    [Fact]
+    public void NextInt_Throws_On_Inverted_Range()
+    {
+        var r = new DeterministicRandom(7);
+        Assert.Throws<System.ArgumentOutOfRangeException>(() => r.NextInt(10, 5));
+    }
+
+    [Fact]
+    public void State_Changes_After_Draw_And_Is_Seed_Deterministic()
+    {
+        var a = new DeterministicRandom(42);
+        var b = new DeterministicRandom(42);
+        var before = a.State;
+        a.NextUInt();
+        Assert.NotEqual(before, a.State);
+        b.NextUInt();
+        Assert.Equal(a.State, b.State);
+    }
 }
