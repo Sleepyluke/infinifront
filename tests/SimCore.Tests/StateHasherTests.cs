@@ -74,4 +74,13 @@ public class StateHasherTests
         weaponB.CooldownRemaining = 3;
         Assert.NotEqual(StateHasher.Hash(a), StateHasher.Hash(b)); // cooldown drift → detected
     }
+
+    [Fact]
+    public void Zero_Stat_Weapon_Differs_From_No_Weapon()
+    {
+        var a = World();
+        var b = World();
+        b.GetUnit(1)!.Weapon = new Weapon { Damage = 0, Range = Fix.Zero, CooldownTicks = 0 };
+        Assert.NotEqual(StateHasher.Hash(a), StateHasher.Hash(b));
+    }
 }

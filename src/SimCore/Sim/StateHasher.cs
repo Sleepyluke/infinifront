@@ -8,12 +8,19 @@ public static class StateHasher
     /// <summary>CONVENTION: every mutable sim field MUST be folded in here. When you add sim
     /// state, add it to this method and re-pin GoldenTrajectoryHash in the same commit.
     /// Unit.Path and Unit.PathVersion are deliberately excluded: derived caches, recomputed
-    /// from hashed state (MoveTarget + map).</summary>
+    /// from hashed state (MoveTarget + map).
+    /// Other documented exclusions: SimWorld._fieldCache/_fieldCacheVersion (derived,
+    /// version-guarded) and MapGrid passability (immutable during Step in plan 2a —
+    /// MUST be hashed once build/destroy commands can mutate it mid-run).
+    /// Patterns for new state: nullable objects need a presence marker before their
+    /// fields; never hash collections by iterating a Dictionary (order is undefined).</summary>
     public static ulong Hash(SimWorld world)
     {
         var h = FnvOffset;
         h = Mix(h, (ulong)world.Tick);
         h = Mix(h, world.Rng.State);
+        h = Mix(h, (ulong)world.NextIdForHashing);
+        h = Mix(h, (ulong)world.Units.Count);
         foreach (var u in world.Units) // List order is stable → deterministic
         {
             h = Mix(h, (ulong)u.Id);

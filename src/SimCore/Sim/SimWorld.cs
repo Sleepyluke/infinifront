@@ -14,6 +14,7 @@ public sealed partial class SimWorld
     private readonly Dictionary<(int, int), FlowField> _fieldCache = new(); // lookup only — never iterated
     private int _fieldCacheVersion; // Map.Version the cache was built against
     private int _nextId = 1;
+    internal int NextIdForHashing => _nextId;
 
     public SimWorld(MapGrid map, ulong seed)
     {

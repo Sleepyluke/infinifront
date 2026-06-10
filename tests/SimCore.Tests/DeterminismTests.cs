@@ -5,7 +5,7 @@ using Xunit;
 
 public class DeterminismTests
 {
-    /// <summary>Builds the standard scenario: 20 units, walls, scripted move orders.</summary>
+    /// <summary>Standard scenario v2: 20 armed units, walls, movement, then a pitched battle.</summary>
     private static (SimWorld world, Dictionary<int, List<Command>> script) Scenario()
     {
         var map = new MapGrid(40, 40);
@@ -14,13 +14,21 @@ public class DeterminismTests
 
         var ids = new List<int>();
         for (int i = 0; i < 20; i++)
-            ids.Add(w.SpawnUnit(i % 2, w.Map.CellCenter(2 + i % 5, 2 + i / 5), Fix.FromFraction(2, 5), 60));
+        {
+            var weapon = new Weapon { Damage = 5, Range = Fix.FromInt(2), CooldownTicks = 8 };
+            ids.Add(w.SpawnUnit(i % 2, w.Map.CellCenter(2 + i % 5, 2 + i / 5), Fix.FromFraction(2, 5), 60, weapon));
+        }
+
+        int[] Owned(int owner) => ids.FindAll(i => w.GetUnit(i)!.OwnerId == owner).ToArray();
 
         var script = new Dictionary<int, List<Command>>
         {
-            [0] = new() { new MoveCommand(0, ids.FindAll(i => w.GetUnit(i)!.OwnerId == 0).ToArray(), w.Map.CellCenter(35, 35)) },
-            [50] = new() { new MoveCommand(1, ids.FindAll(i => w.GetUnit(i)!.OwnerId == 1).ToArray(), w.Map.CellCenter(35, 2)) },
+            [0] = new() { new MoveCommand(0, Owned(0), w.Map.CellCenter(35, 35)) },
+            [50] = new() { new MoveCommand(1, Owned(1), w.Map.CellCenter(35, 2)) },
             [120] = new() { new MoveCommand(0, new[] { ids[0], ids[2] }, w.Map.CellCenter(2, 38)) },
+            // v2: both armies attack-move into each other → acquisition, chase, leash, cooldowns, deaths
+            [200] = new() { new AttackMoveCommand(0, Owned(0), w.Map.CellCenter(35, 2)) },
+            [220] = new() { new AttackMoveCommand(1, Owned(1), w.Map.CellCenter(35, 35)) },
         };
         return (w, script);
     }
@@ -80,5 +88,5 @@ public class DeterminismTests
         Assert.Equal(GoldenTrajectoryHash, combined);
     }
 
-    private const ulong GoldenTrajectoryHash = 12231289173812225436UL;
+    private const ulong GoldenTrajectoryHash = 10310648848103017916UL;
 }
