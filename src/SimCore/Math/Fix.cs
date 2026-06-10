@@ -20,8 +20,10 @@ public readonly struct Fix : System.IComparable<Fix>, System.IEquatable<Fix>
     public static Fix operator +(Fix a, Fix b) => new(a.Raw + b.Raw);
     public static Fix operator -(Fix a, Fix b) => new(a.Raw - b.Raw);
     public static Fix operator -(Fix a) => new(-a.Raw);
-    public static Fix operator *(Fix a, Fix b) => new((a.Raw * b.Raw) >> FractionalBits);
-    public static Fix operator /(Fix a, Fix b) => new((a.Raw << FractionalBits) / b.Raw);
+    public static Fix operator *(Fix a, Fix b) =>
+        new((long)(((System.Int128)a.Raw * b.Raw) >> FractionalBits));
+    public static Fix operator /(Fix a, Fix b) =>
+        new((long)(((System.Int128)a.Raw << FractionalBits) / b.Raw));
 
     public static bool operator <(Fix a, Fix b) => a.Raw < b.Raw;
     public static bool operator >(Fix a, Fix b) => a.Raw > b.Raw;
