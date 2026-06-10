@@ -2,6 +2,9 @@ name: CI
 on: [push, pull_request]
 jobs:
   test:
+    # ubuntu is deliberate: the golden determinism hash was generated on Windows,
+    # so this cross-OS run is what detects platform divergence. Do not "simplify"
+    # to windows-latest.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
