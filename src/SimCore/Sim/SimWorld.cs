@@ -35,6 +35,7 @@ public sealed class SimWorld
     {
         foreach (var cmd in commands) Apply(cmd);
         MoveUnits();
+        RemoveDead();
         Tick++;
     }
 
@@ -89,6 +90,17 @@ public sealed class SimWorld
             {
                 u.Position += step.Normalized() * u.SpeedPerTick;
             }
+        }
+    }
+
+    /// <summary>Reverse-index removal preserves survivor order (list order = determinism contract).</summary>
+    private void RemoveDead()
+    {
+        for (int i = _units.Count - 1; i >= 0; i--)
+        {
+            if (_units[i].Hp > 0) continue;
+            _byId.Remove(_units[i].Id);
+            _units.RemoveAt(i);
         }
     }
 }
