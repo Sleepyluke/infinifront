@@ -5,7 +5,8 @@ using Xunit;
 
 public class DeterminismTests
 {
-    /// <summary>Standard scenario v2: 20 armed units, walls, movement, then a pitched battle.</summary>
+    /// <summary>Standard scenario v2.1: 20 armed units (every 5th fast), walls, movement,
+    /// pitched battle, mid-battle kiting (leash drops), and an explicit attack order.</summary>
     private static (SimWorld world, Dictionary<int, List<Command>> script) Scenario()
     {
         var map = new MapGrid(40, 40);
@@ -16,7 +17,8 @@ public class DeterminismTests
         for (int i = 0; i < 20; i++)
         {
             var weapon = new Weapon { Damage = 5, Range = Fix.FromInt(2), CooldownTicks = 8 };
-            ids.Add(w.SpawnUnit(i % 2, w.Map.CellCenter(2 + i % 5, 2 + i / 5), Fix.FromFraction(2, 5), 60, weapon));
+            var speed = i % 5 == 0 ? Fix.FromFraction(4, 5) : Fix.FromFraction(2, 5); // some fast kiters
+            ids.Add(w.SpawnUnit(i % 2, w.Map.CellCenter(2 + i % 5, 2 + i / 5), speed, 60, weapon));
         }
 
         int[] Owned(int owner) => ids.FindAll(i => w.GetUnit(i)!.OwnerId == owner).ToArray();
@@ -26,9 +28,15 @@ public class DeterminismTests
             [0] = new() { new MoveCommand(0, Owned(0), w.Map.CellCenter(35, 35)) },
             [50] = new() { new MoveCommand(1, Owned(1), w.Map.CellCenter(35, 2)) },
             [120] = new() { new MoveCommand(0, new[] { ids[0], ids[2] }, w.Map.CellCenter(2, 38)) },
-            // v2: both armies attack-move into each other → acquisition, chase, leash, cooldowns, deaths
+            // v2: armies attack-move into each other; fast units kite (leash drops); explicit attack at 350
             [200] = new() { new AttackMoveCommand(0, Owned(0), w.Map.CellCenter(35, 2)) },
             [220] = new() { new AttackMoveCommand(1, Owned(1), w.Map.CellCenter(35, 35)) },
+            // fast owner-1 units flee east mid-battle → attack-movers leash-drop them
+            // (tick 230, not later: ids[5] dies ~tick 249; verified 8 leash drops fire)
+            [230] = new() { new MoveCommand(1, new[] { ids[5], ids[15] }, w.Map.CellCenter(38, 20)) },
+            // explicit attack order (unleashed chase + IsAttackMoving clear) inside the net;
+            // ids[11] is verified alive at tick 350 (ids[5]/ids[15] are dead by then)
+            [350] = new() { new AttackCommand(0, Owned(0), ids[11]) },
         };
         return (w, script);
     }
@@ -88,5 +96,5 @@ public class DeterminismTests
         Assert.Equal(GoldenTrajectoryHash, combined);
     }
 
-    private const ulong GoldenTrajectoryHash = 10310648848103017916UL;
+    private const ulong GoldenTrajectoryHash = 6441639072325266705UL;
 }
