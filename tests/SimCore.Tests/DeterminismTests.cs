@@ -60,4 +60,19 @@ public class DeterminismTests
             Assert.Equal(recorded[t], StateHasher.Hash(b));
         }
     }
+
+    [Fact]
+    public void Final_Hash_Matches_Golden_Constant()
+    {
+        // Golden value pins sim behavior: if this fails, either you changed sim
+        // behavior intentionally (update the constant in the same commit, with a
+        // note in the commit message) or you introduced nondeterminism (fix it).
+        var (w, script) = Scenario();
+        var empty = new List<Command>();
+        for (int t = 0; t < 500; t++)
+            w.Step(script.TryGetValue(t, out var c) ? c : empty);
+        Assert.Equal(GoldenFinalHash, StateHasher.Hash(w));
+    }
+
+    private const ulong GoldenFinalHash = 7746393823038267906UL;
 }
