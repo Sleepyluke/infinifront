@@ -15,7 +15,11 @@ public class FlowMovementTests
         var target = w.Map.CellCenter(8, 0);
         w.Step(new Command[] { new MoveCommand(0, new[] { id }, target) });
         for (int i = 0; i < 200 && w.GetUnit(id)!.HasMoveOrder; i++)
+        {
             w.Step(System.Array.Empty<Command>());
+            var (px, py) = w.Map.WorldToCell(w.GetUnit(id)!.Position);
+            Assert.True(map.IsPassable(px, py), $"tick {i}: unit inside impassable cell ({px},{py})");
+        }
 
         var u = w.GetUnit(id)!;
         Assert.False(u.HasMoveOrder);                 // arrived
@@ -50,8 +54,15 @@ public class FlowMovementTests
 
         var target = w.Map.CellCenter(5, 5); // diagonal neighbor, but corner is walled
         w.Step(new Command[] { new MoveCommand(0, new[] { id }, target) });
+        var visited = new System.Collections.Generic.HashSet<(int, int)>();
         for (int i = 0; i < 200 && w.GetUnit(id)!.HasMoveOrder; i++)
+        {
             w.Step(System.Array.Empty<Command>());
+            visited.Add(w.Map.WorldToCell(w.GetUnit(id)!.Position));
+        }
+        visited.Remove((4, 4));
+        visited.Remove((5, 5));
+        Assert.NotEmpty(visited); // forced detour through a third cell — straight diagonal would visit none
 
         var u = w.GetUnit(id)!;
         Assert.False(u.HasMoveOrder);   // arrived (via a detour, not through the corner)
