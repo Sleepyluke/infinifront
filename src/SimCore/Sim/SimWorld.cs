@@ -86,6 +86,7 @@ public sealed partial class SimWorld
                     var t = GetUnit(atk.TargetId);
                     if (t is null || t.OwnerId == atk.PlayerId) continue;
                     u.AttackTargetId = atk.TargetId;
+                    u.IsAttackMoving = false; // explicit attack order replaces any attack-move
                     u.HasMoveOrder = false;
                     u.Path = null;
                 }
@@ -97,7 +98,7 @@ public sealed partial class SimWorld
                 {
                     var u = GetUnit(id);
                     if (u is null || u.OwnerId != am.PlayerId) continue;
-                    u.IsAttackMoving = true;
+                    u.IsAttackMoving = u.Weapon is not null; // weaponless units treat this as a plain move
                     u.AttackMoveDest = am.Target;
                     u.AttackTargetId = 0;
                     u.HasMoveOrder = true;

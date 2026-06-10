@@ -19,6 +19,13 @@ public sealed partial class SimWorld
         // Pass 2: fight or chase.
         foreach (var u in _units)
         {
+            // Clear dead/missing targets up front so re-acquisition happens this tick, not next.
+            if (u.AttackTargetId != 0)
+            {
+                var t0 = GetUnit(u.AttackTargetId);
+                if (t0 is null || t0.Hp <= 0) u.AttackTargetId = 0;
+            }
+
             // Attack-move: acquire a target, or resume/finish the march.
             if (u.IsAttackMoving && u.Weapon is not null && u.AttackTargetId == 0)
             {
@@ -27,7 +34,7 @@ public sealed partial class SimWorld
                 {
                     u.AttackTargetId = acquired;
                 }
-                else if (!u.HasMoveOrder)
+                else if (!u.HasMoveOrder || !u.MoveTarget.Equals(u.AttackMoveDest))
                 {
                     if (u.Position.Equals(u.AttackMoveDest))
                     {
@@ -60,6 +67,15 @@ public sealed partial class SimWorld
             if (target is null || target.Hp <= 0) { u.AttackTargetId = 0; continue; }
 
             var delta = target.Position - u.Position;
+
+            // Leash: attack-movers abandon targets that kite beyond acquisition range + 2
+            // (explicit AttackCommand orders have no leash — the player asked for that chase).
+            if (u.IsAttackMoving)
+            {
+                var leash = u.Weapon.Range + Fix.FromInt(4);
+                if (delta.LengthSquared() > leash * leash) { u.AttackTargetId = 0; continue; }
+            }
+
             if (delta.LengthSquared() <= u.Weapon.Range * u.Weapon.Range)
             {
                 u.HasMoveOrder = false;

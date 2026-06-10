@@ -64,4 +64,39 @@ public class AttackMoveTests
         Assert.Equal(0, w.GetUnit(soldier)!.AttackTargetId);
         Assert.False(w.GetUnit(soldier)!.IsAttackMoving);
     }
+
+    [Fact]
+    public void AttackMove_To_Unreachable_Destination_Gives_Up()
+    {
+        var map = new MapGrid(20, 20);
+        for (int y = 0; y < 20; y++) map.SetPassable(10, y, false); // full wall
+        var w = new SimWorld(map, seed: 1);
+        var soldier = w.SpawnUnit(0, w.Map.CellCenter(2, 5), Fix.FromFraction(1, 2), 50, TestWeapon());
+        w.Step(new Command[] { new AttackMoveCommand(0, new[] { soldier }, w.Map.CellCenter(18, 5)) });
+        for (int i = 0; i < 50 && (w.GetUnit(soldier)!.IsAttackMoving || w.GetUnit(soldier)!.HasMoveOrder); i++)
+            w.Step(System.Array.Empty<Command>());
+        Assert.False(w.GetUnit(soldier)!.IsAttackMoving);
+        Assert.False(w.GetUnit(soldier)!.HasMoveOrder);
+    }
+
+    [Fact]
+    public void AttackMover_Abandons_Kiting_Target_Beyond_Leash()
+    {
+        var w = new SimWorld(new MapGrid(40, 20), seed: 1);
+        var soldier = w.SpawnUnit(0, w.Map.CellCenter(5, 10), Fix.FromFraction(1, 2), 50, TestWeapon());
+        var kiter = w.SpawnUnit(1, w.Map.CellCenter(8, 10), Fix.FromInt(1), 100); // faster than soldier
+        var dest = w.Map.CellCenter(5, 18); // soldier's real destination, southward
+
+        w.Step(new Command[]
+        {
+            new AttackMoveCommand(0, new[] { soldier }, dest),
+            new MoveCommand(1, new[] { kiter }, w.Map.CellCenter(38, 10)), // kiter flees east, fast
+        });
+        for (int i = 0; i < 400 && (w.GetUnit(soldier)!.IsAttackMoving || w.GetUnit(soldier)!.HasMoveOrder); i++)
+            w.Step(System.Array.Empty<Command>());
+
+        Assert.Equal(100, w.GetUnit(kiter)!.Hp);                 // never caught
+        Assert.Equal(dest, w.GetUnit(soldier)!.Position);        // gave up chase, completed the march
+        Assert.False(w.GetUnit(soldier)!.IsAttackMoving);
+    }
 }
