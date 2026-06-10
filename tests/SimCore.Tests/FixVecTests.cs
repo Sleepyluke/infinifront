@@ -34,4 +34,27 @@ public class FixVecTests
         Assert.Equal(Fix.Zero, n.X);
         Assert.Equal(Fix.Zero, n.Y);
     }
+
+    [Fact]
+    public void Length_Preserves_Tiny_Vectors()
+    {
+        // magnitude 100 raw units ≈ 0.0015 — old code truncated this to zero
+        var v = new FixVec(new Fix(100), Fix.Zero);
+        Assert.Equal(100L, v.Length().Raw);
+    }
+
+    [Fact]
+    public void Normalized_Tiny_Vector_Is_Unit_Length()
+    {
+        var v = new FixVec(new Fix(100), Fix.Zero);
+        Assert.Equal(Fix.One, v.Normalized().X);
+        Assert.Equal(Fix.Zero, v.Normalized().Y);
+    }
+
+    [Fact]
+    public void Length_3_4_Still_Exactly_5()
+    {
+        var v = new FixVec(Fix.FromInt(3), Fix.FromInt(4));
+        Assert.Equal(Fix.FromInt(5), v.Length());
+    }
 }

@@ -37,10 +37,16 @@ public readonly struct Fix : System.IComparable<Fix>, System.IEquatable<Fix>
     {
         if (v.Raw <= 0) return Zero;
         // sqrt(raw * 2^16) gives the Q48.16 root of the Q48.16 input
-        var n = (System.UInt128)(ulong)v.Raw << FractionalBits;
+        return new Fix(IntegerSqrt((System.UInt128)(ulong)v.Raw << FractionalBits));
+    }
+
+    /// <summary>floor(sqrt(n)) via integer Newton's method; deterministic.</summary>
+    internal static long IntegerSqrt(System.UInt128 n)
+    {
+        if (n == 0) return 0;
         System.UInt128 x = n, y = (x + 1) / 2;
         while (y < x) { x = y; y = (x + n / x) / 2; }
-        return new Fix((long)(ulong)x);
+        return (long)(ulong)x;
     }
 
     public int CompareTo(Fix other) => Raw.CompareTo(other.Raw);

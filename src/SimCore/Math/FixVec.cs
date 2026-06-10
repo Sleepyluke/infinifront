@@ -15,7 +15,13 @@ public readonly struct FixVec : System.IEquatable<FixVec>
     public static FixVec operator *(FixVec a, Fix s) => new(a.X * s, a.Y * s);
 
     public Fix LengthSquared() => X * X + Y * Y;
-    public Fix Length() => Fix.Sqrt(LengthSquared());
+
+    /// <summary>Exact length via 128-bit sum of squared raws — no fractional truncation.</summary>
+    public Fix Length()
+    {
+        var sum = (System.Int128)X.Raw * X.Raw + (System.Int128)Y.Raw * Y.Raw;
+        return new Fix(Fix.IntegerSqrt((System.UInt128)sum));
+    }
 
     public FixVec Normalized()
     {
