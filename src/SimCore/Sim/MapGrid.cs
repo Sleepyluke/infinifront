@@ -8,6 +8,9 @@ public sealed class MapGrid
     public int Height { get; }
     private readonly bool[] _passable; // index = y * Width + x
 
+    /// <summary>Bumped on every real passability change; consumers invalidate cached paths against it.</summary>
+    public int Version { get; private set; }
+
     public MapGrid(int width, int height)
     {
         Width = width;
@@ -22,7 +25,11 @@ public sealed class MapGrid
 
     public void SetPassable(int x, int y, bool value)
     {
-        if (InBounds(x, y)) _passable[y * Width + x] = value;
+        if (!InBounds(x, y)) return;
+        var i = y * Width + x;
+        if (_passable[i] == value) return;
+        _passable[i] = value;
+        Version++;
     }
 
     public (int cx, int cy) WorldToCell(FixVec pos) => (pos.X.ToInt(), pos.Y.ToInt());

@@ -11,6 +11,7 @@ public sealed class SimWorld
 
     private readonly List<Unit> _units = new(); // stable order — required for determinism
     private readonly Dictionary<int, Unit> _byId = new();
+    private readonly Dictionary<(int, int), FlowField> _fieldCache = new(); // lookup only — never iterated
     private int _nextId = 1;
 
     public SimWorld(MapGrid map, ulong seed)
@@ -30,9 +31,21 @@ public sealed class SimWorld
         return u.Id;
     }
 
+    /// <summary>Per-tick flow-field cache: one Compute per target cell per Step.</summary>
+    private FlowField GetField(int targetCellX, int targetCellY)
+    {
+        if (!_fieldCache.TryGetValue((targetCellX, targetCellY), out var f))
+        {
+            f = FlowField.Compute(Map, targetCellX, targetCellY);
+            _fieldCache[(targetCellX, targetCellY)] = f;
+        }
+        return f;
+    }
+
     /// <summary>Advance one tick. Commands are applied first, then systems run in fixed order.</summary>
     public void Step(IReadOnlyList<Command> commands)
     {
+        _fieldCache.Clear();
         foreach (var cmd in commands) Apply(cmd);
         MoveUnits();
         RemoveDead();
@@ -45,7 +58,7 @@ public sealed class SimWorld
         {
             case MoveCommand mv:
                 var (tx, ty) = Map.WorldToCell(mv.Target);
-                var field = FlowField.Compute(Map, tx, ty); // shared by all units in this command
+                var field = GetField(tx, ty); // per-tick cache
                 foreach (var id in mv.UnitIds)
                 {
                     var u = GetUnit(id);
@@ -53,6 +66,7 @@ public sealed class SimWorld
                     u.HasMoveOrder = true;
                     u.MoveTarget = mv.Target;
                     u.Path = field;
+                    u.PathVersion = Map.Version;
                 }
                 break;
         }
@@ -75,7 +89,13 @@ public sealed class SimWorld
             }
             else
             {
-                var (dx, dy) = u.Path!.DirectionAt(cx, cy);
+                if (u.Path is null || u.PathVersion != Map.Version)
+                {
+                    var (rtx, rty) = Map.WorldToCell(u.MoveTarget);
+                    u.Path = GetField(rtx, rty);
+                    u.PathVersion = Map.Version;
+                }
+                var (dx, dy) = u.Path.DirectionAt(cx, cy);
                 if (dx == 0 && dy == 0) { u.HasMoveOrder = false; u.Path = null; continue; } // unreachable
                 step = Map.CellCenter(cx + dx, cy + dy) - u.Position;
             }
