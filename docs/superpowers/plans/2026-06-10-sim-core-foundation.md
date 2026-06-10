@@ -1297,3 +1297,15 @@ git commit -m "ci: run test suite on push"
 - All sim math is `Fix`/`FixVec`/`int` — no `float`/`double` in `src/SimCore` outside `Fix.ToString()`.
 
 **Next plan:** Combat, economy & buildings (plan 2 of 5) — adds component-bag units (the spec's ECS direction), attacks, resources, supply, production, and fog of war on top of this foundation.
+
+## Plan-2 Inputs (carried forward from code reviews of this plan — STATUS: COMPLETE, all 11 tasks merged)
+
+Findings the reviewers flagged as fine-for-now but load-bearing for plan 2:
+
+1. **Stale flow fields vs. mutable passability** — `MoveUnits` never re-validates passability after a field is computed. When buildings change passability mid-game, add a passability version counter that invalidates `Unit.Path` (or per-step `IsPassable` checks).
+2. **StateHasher coverage convention** — hash currently covers Tick/Id/OwnerId/Position/Hp only. Every new sim field (resources, supply, queues, cooldowns) must be added; establish a convention (components hash themselves) and add `DeterministicRandom` state (needs a `State` accessor) once any system consumes the RNG.
+3. **Unit removal API** — combat needs death; removal must preserve `_units` list order and `_byId` sync. Add an explicit `SimWorld` method early.
+4. **Mutable `Unit` exposure** — `SimWorld.Units` returns mutable Units; the "commands are the only mutation path" rule is by-convention, not type-enforced. Consider internal setters / read-only snapshots before the presentation layer (plan 4) consumes it.
+5. **`FixVec.Length()` underflow** — vectors with magnitude < 2^-8 yield Length 0 / Normalized Zero (LengthSquared truncates 16 fractional bits pre-sqrt). Harmless for tile-scale movement; fix via a raw-precision path before sub-tile combat math (separation forces, tight melee ranges) consumes it.
+6. **`DeterministicRandom.NextInt`** — inverted/empty ranges fail silently/oddly; add a guard before combat variance uses it.
+7. **Flow-field caching** — fields are computed per command, not cached per target per tick batch; revisit if command volume or map size grows.

@@ -12,5 +12,5 @@ public sealed class Unit
 
     public bool HasMoveOrder { get; set; }
     public FixVec MoveTarget { get; set; }
-    public FlowField? Path { get; set; } // null until Task 8 wires pathfinding in
+    public FlowField? Path { get; set; } // null when there is no active move order
 }
