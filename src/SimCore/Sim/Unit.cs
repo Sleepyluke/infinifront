@@ -17,4 +17,7 @@ public sealed class Unit
 
     public Weapon? Weapon { get; set; }
     public int AttackTargetId { get; set; } // 0 = no target
+
+    public bool IsAttackMoving { get; set; }
+    public FixVec AttackMoveDest { get; set; }
 }

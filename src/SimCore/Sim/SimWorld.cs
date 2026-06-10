@@ -70,6 +70,8 @@ public sealed partial class SimWorld
                 {
                     var u = GetUnit(id);
                     if (u is null || u.OwnerId != mv.PlayerId) continue;
+                    u.IsAttackMoving = false;
+                    u.AttackTargetId = 0;
                     u.HasMoveOrder = true;
                     u.MoveTarget = mv.Target;
                     u.Path = field;
@@ -86,6 +88,22 @@ public sealed partial class SimWorld
                     u.AttackTargetId = atk.TargetId;
                     u.HasMoveOrder = false;
                     u.Path = null;
+                }
+                break;
+            case AttackMoveCommand am:
+                var (amx, amy) = Map.WorldToCell(am.Target);
+                var amField = GetField(amx, amy);
+                foreach (var id in am.UnitIds)
+                {
+                    var u = GetUnit(id);
+                    if (u is null || u.OwnerId != am.PlayerId) continue;
+                    u.IsAttackMoving = true;
+                    u.AttackMoveDest = am.Target;
+                    u.AttackTargetId = 0;
+                    u.HasMoveOrder = true;
+                    u.MoveTarget = am.Target;
+                    u.Path = amField;
+                    u.PathVersion = Map.Version;
                 }
                 break;
         }
