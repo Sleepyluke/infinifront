@@ -62,17 +62,23 @@ public class DeterminismTests
     }
 
     [Fact]
-    public void Final_Hash_Matches_Golden_Constant()
+    public void Trajectory_Hash_Matches_Golden_Constant()
     {
-        // Golden value pins sim behavior: if this fails, either you changed sim
-        // behavior intentionally (update the constant in the same commit, with a
-        // note in the commit message) or you introduced nondeterminism (fix it).
+        // Folds EVERY tick's state hash into one constant, so any mid-run behavior
+        // change trips this test — not just end-state changes. If this fails: either
+        // you changed sim behavior intentionally (update the constant in the same
+        // commit, with a note in the commit message) or you introduced
+        // nondeterminism (fix it).
         var (w, script) = Scenario();
         var empty = new List<Command>();
+        ulong combined = 14695981039346656037UL;
         for (int t = 0; t < 500; t++)
+        {
             w.Step(script.TryGetValue(t, out var c) ? c : empty);
-        Assert.Equal(GoldenFinalHash, StateHasher.Hash(w));
+            combined = unchecked((combined ^ StateHasher.Hash(w)) * 1099511628211UL);
+        }
+        Assert.Equal(GoldenTrajectoryHash, combined);
     }
 
-    private const ulong GoldenFinalHash = 7746393823038267906UL;
+    private const ulong GoldenTrajectoryHash = 13705217827222346314UL;
 }
