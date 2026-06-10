@@ -14,4 +14,7 @@ public sealed class Unit
     public FixVec MoveTarget { get; set; }
     public FlowField? Path { get; set; } // null when there is no active move order
     public int PathVersion { get; set; } // MapGrid.Version when Path was computed
+
+    public Weapon? Weapon { get; set; }
+    public int AttackTargetId { get; set; } // 0 = no target
 }

@@ -3,7 +3,7 @@ using SimCore.Math;
 
 namespace SimCore.Sim;
 
-public sealed class SimWorld
+public sealed partial class SimWorld
 {
     public MapGrid Map { get; }
     public int Tick { get; private set; }
@@ -24,15 +24,15 @@ public sealed class SimWorld
     public IReadOnlyList<Unit> Units => _units;
     public Unit? GetUnit(int id) => _byId.TryGetValue(id, out var u) ? u : null;
 
-    public int SpawnUnit(int ownerId, FixVec pos, Fix speedPerTick, int hp)
+    public int SpawnUnit(int ownerId, FixVec pos, Fix speedPerTick, int hp, Weapon? weapon = null)
     {
-        var u = new Unit { Id = _nextId++, OwnerId = ownerId, Position = pos, SpeedPerTick = speedPerTick, Hp = hp };
+        var u = new Unit { Id = _nextId++, OwnerId = ownerId, Position = pos, SpeedPerTick = speedPerTick, Hp = hp, Weapon = weapon };
         _units.Add(u);
         _byId[u.Id] = u;
         return u.Id;
     }
 
-    /// <summary>Per-tick flow-field cache: one Compute per target cell per Step.
+    /// <summary>Version-scoped flow-field cache (persists across ticks for an unchanged map).
     /// Version-guarded so a mid-Step passability change can never serve a stale field.</summary>
     private FlowField GetField(int targetCellX, int targetCellY)
     {
@@ -53,6 +53,7 @@ public sealed class SimWorld
     public void Step(IReadOnlyList<Command> commands)
     {
         foreach (var cmd in commands) Apply(cmd);
+        UpdateCombat();
         MoveUnits();
         RemoveDead();
         Tick++;
@@ -73,6 +74,18 @@ public sealed class SimWorld
                     u.MoveTarget = mv.Target;
                     u.Path = field;
                     u.PathVersion = Map.Version;
+                }
+                break;
+            case AttackCommand atk:
+                foreach (var id in atk.UnitIds)
+                {
+                    var u = GetUnit(id);
+                    if (u is null || u.OwnerId != atk.PlayerId || u.Weapon is null) continue;
+                    var t = GetUnit(atk.TargetId);
+                    if (t is null || t.OwnerId == atk.PlayerId) continue;
+                    u.AttackTargetId = atk.TargetId;
+                    u.HasMoveOrder = false;
+                    u.Path = null;
                 }
                 break;
         }

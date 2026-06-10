@@ -6,3 +6,5 @@ namespace SimCore.Sim;
 public abstract record Command(int PlayerId);
 
 public sealed record MoveCommand(int PlayerId, int[] UnitIds, FixVec Target) : Command(PlayerId);
+
+public sealed record AttackCommand(int PlayerId, int[] UnitIds, int TargetId) : Command(PlayerId);
