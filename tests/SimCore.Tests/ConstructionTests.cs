@@ -49,4 +49,16 @@ public class ConstructionTests
         w.Step(System.Array.Empty<Command>());
         Assert.Equal(0, w.Players[0].SupplyCap);
     }
+
+    [Fact]
+    public void Same_Tick_Completion_And_Destruction_Nets_Zero_Supply()
+    {
+        var (w, id) = PlacedDepot();
+        // advance to one tick before completion, then kill it on the completing tick
+        for (int i = 0; i < BuildingTests.Depot.BuildTimeTicks - 1; i++) w.Step(System.Array.Empty<Command>());
+        w.GetBuilding(id)!.Hp = 0;
+        w.Step(System.Array.Empty<Command>()); // UpdateConstruction grants, RemoveDeadBuildings revokes
+        Assert.Empty(w.Buildings);
+        Assert.Equal(0, w.Players[0].SupplyCap);
+    }
 }
