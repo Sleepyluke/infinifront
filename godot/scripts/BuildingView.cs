@@ -15,6 +15,15 @@ public partial class BuildingView : Node2D
 
     public int BuildingId { get; private set; }
 
+    private bool _selected;
+    public bool Selected
+    {
+        get => _selected;
+        set { _selected = value; QueueRedraw(); }
+    }
+
+    private Vector2? _rallyPx; // null = no rally point
+
     public void Init(Building b)
     {
         BuildingId = b.Id;
@@ -32,6 +41,7 @@ public partial class BuildingView : Node2D
         _hp = b.Hp;
         _queueCount = b.Queue.Count;
         _progress = b.IsComplete ? 1f : (float)b.BuildProgress / b.Spec.BuildTimeTicks;
+        _rallyPx = b.HasRally ? RenderMath.ToPx(b.RallyPoint) : (Vector2?)null;
         QueueRedraw();
     }
 
@@ -66,5 +76,36 @@ public partial class BuildingView : Node2D
 
         for (int i = 0; i < _queueCount; i++)
             DrawRect(new Rect2(4 + i * 10, _sizePx.Y + 4, 8, 8), Colors.White with { A = 0.8f });
+
+        // Rally flag: dashed line from footprint centre to rally point, with a small flag.
+        if (Selected && _rallyPx.HasValue)
+        {
+            // Convert world-px rally point to local coords (BuildingView draws in local space).
+            var localRally = _rallyPx.Value - Position;
+            var centre = _sizePx / 2;
+            // Dashed line approximation: draw segments.
+            var dir = localRally - centre;
+            float len = dir.Length();
+            if (len > 1f)
+            {
+                var step = dir.Normalized() * 8f;
+                int segments = (int)(len / 8f);
+                for (int i = 0; i < segments; i += 2)
+                {
+                    var a = centre + step * i;
+                    var b2 = centre + step * System.Math.Min(i + 1, segments);
+                    DrawLine(a, b2, Colors.Yellow with { A = 0.8f }, 1.5f);
+                }
+            }
+            // Flag: small triangle at rally point in local coords.
+            var flagPos = localRally;
+            DrawColoredPolygon(new Vector2[]
+            {
+                flagPos + new Vector2(0, -14),
+                flagPos + new Vector2(8, -10),
+                flagPos + new Vector2(0, -6),
+            }, Colors.Yellow with { A = 0.9f });
+            DrawLine(flagPos + new Vector2(0, -14), flagPos, Colors.Yellow with { A = 0.9f }, 1.5f);
+        }
     }
 }

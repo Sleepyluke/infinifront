@@ -17,7 +17,8 @@ public partial class Hud : CanvasLayer
     private ProgressBar _queueBar = null!;
 
     // Stale-button detection: tracks last state that RebuildButtons rendered from.
-    private (bool workerSel, int buildingId, bool canTrain) _lastButtonKey;
+    // commonStance: null = mixed/no armed units, non-null = the stance shared by all armed units.
+    private (bool workerSel, int buildingId, bool canTrain, Stance? commonStance) _lastButtonKey;
 
     public void Init(SimRunner runner, SelectionController sel, CommandController cmd)
     {
@@ -90,13 +91,27 @@ public partial class Hud : CanvasLayer
         else _selectionInfo.Text = $"{units.Count} units selected";
     }
 
+    private static Stance? CommonStance(System.Collections.Generic.IEnumerable<Unit?> units)
+    {
+        Stance? common = null;
+        foreach (var u in units)
+        {
+            if (u?.Weapon is null) continue;
+            if (common is null) common = u.Stance;
+            else if (common != u.Stance) return null; // mixed
+        }
+        return common; // null if no armed units
+    }
+
     private void CheckButtonRelevance()
     {
         var w = _runner.World;
-        bool workerSel = _sel.SelectedUnits.Select(w.GetUnit).Any(u => u?.Harvester is not null);
+        var selectedUnits = _sel.SelectedUnits.Select(w.GetUnit).ToList();
+        bool workerSel = selectedUnits.Any(u => u?.Harvester is not null);
         var bld = _sel.SelectedBuilding != 0 ? w.GetBuilding(_sel.SelectedBuilding) : null;
         bool canTrain = bld is { IsComplete: true, Spec.CanTrain: true };
-        var key = (workerSel, _sel.SelectedBuilding, canTrain);
+        var commonStance = CommonStance(selectedUnits);
+        var key = (workerSel, _sel.SelectedBuilding, canTrain, commonStance);
         if (key != _lastButtonKey) RebuildButtons();
     }
 
@@ -106,7 +121,8 @@ public partial class Hud : CanvasLayer
         var w = _runner.World;
         var p = _sel.ControlledPlayer;
 
-        bool workerSelected = _sel.SelectedUnits.Select(w.GetUnit).Any(u => u?.Harvester is not null);
+        var selectedUnits = _sel.SelectedUnits.Select(w.GetUnit).ToList();
+        bool workerSelected = selectedUnits.Any(u => u?.Harvester is not null);
         if (workerSelected)
         {
             AddButton($"Build Depot ({ReferenceSpecs.Depot.MineralCost})",
@@ -125,11 +141,28 @@ public partial class Hud : CanvasLayer
                 () => _runner.Enqueue(new TrainCommand(p, b.Id, ReferenceSpecs.Tank)));
         }
 
+        // Stance buttons: shown when ≥1 owned ARMED unit is selected.
+        var armedUnits = selectedUnits.Where(u => u?.Weapon is not null).ToList();
+        if (armedUnits.Count > 0)
+        {
+            var common = CommonStance(armedUnits);
+            var ids = _sel.SelectedUnits.ToArray();
+            void AddStance(string label, Stance s)
+            {
+                var prefix = common == s ? ">" : "";
+                AddButton(prefix + label, () => _runner.Enqueue(new SetStanceCommand(p, ids, s)));
+            }
+            AddStance("Auto", Stance.AutoAttack);
+            AddStance("Defend", Stance.Defend);
+            AddStance("Passive", Stance.Passive);
+        }
+
         // Record what we just built so CheckButtonRelevance can skip redundant rebuilds.
         bool workerSel = workerSelected;
         var bld = _sel.SelectedBuilding != 0 ? w.GetBuilding(_sel.SelectedBuilding) : null;
         bool canTrain = bld is { IsComplete: true, Spec.CanTrain: true };
-        _lastButtonKey = (workerSel, _sel.SelectedBuilding, canTrain);
+        var commonStance = CommonStance(selectedUnits);
+        _lastButtonKey = (workerSel, _sel.SelectedBuilding, canTrain, commonStance);
     }
 
     private void AddButton(string text, System.Action onPress)

@@ -17,6 +17,7 @@ public partial class UnitView : Node2D
     private int _maxHp = 1, _hp = 1;
     private bool _attacking;
     private bool _dying;
+    private bool _isPatrolling;
 
     public static readonly Color[] PlayerColors = { new(0.2f, 0.45f, 1f), new(1f, 0.35f, 0.25f) };
 
@@ -53,6 +54,8 @@ public partial class UnitView : Node2D
 
         bool justFired = u.Weapon is not null && u.Weapon.CooldownRemaining == u.Weapon.CooldownTicks && u.AttackTargetId != 0;
         if (justFired) _attacking = true;
+
+        _isPatrolling = u.IsPatrolling;
 
         PlayAnim(_attacking ? "attack" : moving ? "walk" : "idle");
     }
@@ -107,6 +110,28 @@ public partial class UnitView : Node2D
             var color = frac > 0.66f ? Colors.Lime : frac > 0.33f ? Colors.Yellow : Colors.Red;
             DrawRect(new Rect2(-16, -36, 32, 4), Colors.Black);
             DrawRect(new Rect2(-16, -36, 32 * frac, 4), color);
+        }
+
+        // Patrol glyph: small cyan double-triangle above the unit when patrolling.
+        if (_isPatrolling && (Selected || true))
+        {
+            // Two small arrow triangles pointing left and right, side by side above unit.
+            var top = new Vector2(0, -46);
+            var cyan = new Color(0f, 1f, 1f, 0.9f);
+            // Left-pointing triangle
+            DrawColoredPolygon(new Vector2[]
+            {
+                top + new Vector2(-10, -5),
+                top + new Vector2(-4, -9),
+                top + new Vector2(-4, -1),
+            }, cyan);
+            // Right-pointing triangle
+            DrawColoredPolygon(new Vector2[]
+            {
+                top + new Vector2(10, -5),
+                top + new Vector2(4, -9),
+                top + new Vector2(4, -1),
+            }, cyan);
         }
     }
 }

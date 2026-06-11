@@ -16,8 +16,12 @@ Requires Godot 4.6 .NET (the winget install, NOT the Steam build — Steam's has
 | Left click / drag | select / box-select (Shift adds) |
 | Right click | context: move / attack / harvest |
 | A + left click | attack-move |
+| P + left click | patrol (loops between current pos and target) |
+| Del | destroy selected own units/building |
+| Right click (building selected, no units) | set rally point (click footprint = clear) |
+| Auto / Defend / Passive buttons | set stance for selected armed units |
 | Tab | switch controlled player |
-| Esc | cancel attack-move or build ghost |
+| Esc | cancel attack-move, patrol, or build ghost |
 | WASD / arrows / screen edge | pan camera |
 | Mouse wheel | zoom steps |
 | Space | pause sim (orders still queue) |

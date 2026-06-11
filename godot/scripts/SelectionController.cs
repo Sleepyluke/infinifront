@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using SimCore.Sim;
 
 namespace LlmRts.Godot;
 
@@ -31,6 +32,16 @@ public partial class SelectionController : Node2D
                 PlayerSwitched?.Invoke();
                 GetViewport().SetInputAsHandled();
                 break;
+
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Delete }
+                when SelectedUnits.Count > 0 || SelectedBuilding != 0:
+            {
+                var destroyIds = SelectedUnits.ToList();
+                if (SelectedBuilding != 0) destroyIds.Add(SelectedBuilding);
+                _runner.Enqueue(new DestroyCommand(ControlledPlayer, destroyIds.ToArray()));
+                GetViewport().SetInputAsHandled();
+                break;
+            }
 
             case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }:
                 _dragging = true;
@@ -95,6 +106,7 @@ public partial class SelectionController : Node2D
     private void ApplyHighlights()
     {
         foreach (var v in _view.Units.Values) v.Selected = SelectedUnits.Contains(v.UnitId);
+        foreach (var v in _view.Buildings.Values) v.Selected = v.BuildingId == SelectedBuilding;
         SelectionChanged?.Invoke();
     }
 

@@ -14,6 +14,7 @@ public partial class CommandController : Node2D
     private ViewSync _view = null!;
 
     private bool _attackMoveArmed;
+    private bool _patrolArmed;
     private BuildingSpec? _ghostSpec;     // non-null → placement mode
 
     public void Init(SimRunner runner, SelectionController sel, ViewSync view)
@@ -30,14 +31,23 @@ public partial class CommandController : Node2D
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.A } when _ghostSpec is null && _sel.SelectedUnits.Count > 0:
                 _attackMoveArmed = true;
                 break;
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.P } when _ghostSpec is null && _sel.SelectedUnits.Count > 0:
+                _patrolArmed = true;
+                break;
             case InputEventKey { Pressed: true, Keycode: Key.Escape }:
                 _attackMoveArmed = false;
+                _patrolArmed = false;
                 _ghostSpec = null;
                 QueueRedraw();
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } when _attackMoveArmed:
                 IssueAttackMove(GetGlobalMousePosition());
                 _attackMoveArmed = false;
+                GetViewport().SetInputAsHandled();
+                break;
+            case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } when _patrolArmed:
+                IssuePatrol(GetGlobalMousePosition());
+                _patrolArmed = false;
                 GetViewport().SetInputAsHandled();
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } when _ghostSpec is not null:
@@ -61,7 +71,27 @@ public partial class CommandController : Node2D
 
     private void ContextOrder(Vector2 worldPx)
     {
-        if (_sel.SelectedUnits.Count == 0) return;
+        // Rally: right-click with NO units but an owned production building selected.
+        if (_sel.SelectedUnits.Count == 0)
+        {
+            if (_sel.SelectedBuilding != 0)
+            {
+                var w2 = _runner.World;
+                var p2 = _sel.ControlledPlayer;
+                var bldg = w2.GetBuilding(_sel.SelectedBuilding);
+                if (bldg is not null && bldg.OwnerId == p2)
+                {
+                    var (cx2, cy2) = RenderMath.PxToCell(worldPx);
+                    bool insideFootprint = cx2 >= bldg.CellX && cx2 < bldg.CellX + bldg.Spec.Width
+                                       && cy2 >= bldg.CellY && cy2 < bldg.CellY + bldg.Spec.Height;
+                    if (insideFootprint)
+                        _runner.Enqueue(new SetRallyCommand(p2, bldg.Id, default, Clear: true));
+                    else
+                        _runner.Enqueue(new SetRallyCommand(p2, bldg.Id, ToSim(worldPx)));
+                }
+            }
+            return;
+        }
         var w = _runner.World;
         var p = _sel.ControlledPlayer;
         var ids = SelectedIds();
@@ -95,6 +125,9 @@ public partial class CommandController : Node2D
 
     private void IssueAttackMove(Vector2 worldPx) =>
         _runner.Enqueue(new AttackMoveCommand(_sel.ControlledPlayer, SelectedIds(), ToSim(worldPx)));
+
+    private void IssuePatrol(Vector2 worldPx) =>
+        _runner.Enqueue(new PatrolCommand(_sel.ControlledPlayer, SelectedIds(), ToSim(worldPx)));
 
     private void TryPlaceGhost(Vector2 worldPx)
     {
