@@ -16,10 +16,15 @@ public sealed partial class SimWorld
     private int _nextId = 1;
     internal int NextIdForHashing => _nextId;
 
-    public SimWorld(MapGrid map, ulong seed)
+    private readonly PlayerState[] _players;
+    public System.Collections.Generic.IReadOnlyList<PlayerState> Players => _players;
+
+    public SimWorld(MapGrid map, ulong seed, int playerCount = 2)
     {
         Map = map;
         Rng = new DeterministicRandom(seed);
+        _players = new PlayerState[playerCount];
+        for (int i = 0; i < playerCount; i++) _players[i] = new PlayerState();
     }
 
     public IReadOnlyList<Unit> Units => _units;
@@ -48,6 +53,7 @@ public sealed partial class SimWorld
         };
         _units.Add(u);
         _byId[u.Id] = u;
+        _players[ownerId].SupplyUsed += supplyCost;
         return u.Id;
     }
 
@@ -176,6 +182,7 @@ public sealed partial class SimWorld
         for (int i = _units.Count - 1; i >= 0; i--)
         {
             if (_units[i].Hp > 0) continue;
+            _players[_units[i].OwnerId].SupplyUsed -= _units[i].SupplyCost;
             _byId.Remove(_units[i].Id);
             _units.RemoveAt(i);
         }
