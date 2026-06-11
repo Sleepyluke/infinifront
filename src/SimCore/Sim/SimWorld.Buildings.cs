@@ -39,6 +39,20 @@ public sealed partial class SimWorld
         return b.Id;
     }
 
+    /// <summary>Setup-time API (map generation): place a building already
+    /// completed — full Hp, IsComplete, supply granted. Mirrors the
+    /// UpdateConstruction completion path. Not reachable via commands.</summary>
+    public int AddCompletedBuilding(int ownerId, BuildingSpec spec, int cellX, int cellY)
+    {
+        var id = PlaceBuilding(ownerId, spec, cellX, cellY);
+        var b = _buildingsById[id];
+        b.IsComplete = true;
+        b.Hp = spec.MaxHp;
+        b.BuildProgress = spec.BuildTimeTicks;
+        _players[ownerId].SupplyCap += spec.SupplyProvided;
+        return id;
+    }
+
     private void UpdateConstruction()
     {
         foreach (var b in _buildings)
