@@ -202,6 +202,16 @@ public sealed partial class SimWorld
                     var u = GetUnit(id);
                     if (u is null || u.OwnerId != ss.PlayerId) continue;
                     u.Stance = ss.Stance;
+                    // Switching to Passive must break any active anchored (self-acquired) engagement:
+                    // the player is saying "stop fighting", so we stand down immediately where we are.
+                    // We do NOT call Disengage() here (unit's stance is now Passive so walking home
+                    // is not appropriate either) — just clear the combat state explicitly.
+                    // Explicit (command-ordered, anchorless) engagements are unaffected.
+                    if (ss.Stance == Stance.Passive && u.HasAnchor)
+                    {
+                        u.AttackTargetId = 0;
+                        u.HasAnchor = false;
+                    }
                 }
                 break;
         }

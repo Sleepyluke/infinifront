@@ -28,7 +28,7 @@ public sealed partial class SimWorld
             if (u.AttackTargetId != 0 && !TryResolveTarget(u.AttackTargetId, out _, out _, out _))
             {
                 u.AttackTargetId = 0;
-                if (u.HasAnchor) { u.HasAnchor = false; }
+                Disengage(u); // no-ops when !HasAnchor
             }
 
             // Attack-move: acquire a target, or resume/finish the march.
@@ -84,7 +84,7 @@ public sealed partial class SimWorld
             if (!TryResolveTarget(u.AttackTargetId, out var targetPos, out var targetUnit, out var targetBuilding))
             {
                 u.AttackTargetId = 0;
-                if (u.HasAnchor) { u.HasAnchor = false; }
+                Disengage(u); // no-ops when !HasAnchor
                 continue;
             }
 
@@ -98,7 +98,7 @@ public sealed partial class SimWorld
                 if (!IsVisibleTo(u.OwnerId, tcx, tcy))
                 {
                     u.AttackTargetId = 0;
-                    if (u.HasAnchor) { u.HasAnchor = false; }
+                    Disengage(u); // no-ops when !HasAnchor
                     continue;
                 }
             }
@@ -121,7 +121,7 @@ public sealed partial class SimWorld
                 if ((targetPos - u.Anchor).LengthSquared() > leash * leash)
                 {
                     u.AttackTargetId = 0;
-                    u.HasAnchor = false;
+                    Disengage(u);
                     continue;
                 }
             }
@@ -150,6 +150,23 @@ public sealed partial class SimWorld
                 u.PathVersion = Map.Version;
             }
         }
+    }
+
+    /// <summary>Ends an anchored stance engagement. Defend walks home; AutoAttack
+    /// stays put. Anchor cleared either way (Defend clears on arrival via the
+    /// normal arrival logic — the move order is an ordinary move).</summary>
+    private void Disengage(Unit u)
+    {
+        if (!u.HasAnchor) return;
+        if (u.Stance == Stance.Defend && !u.Position.Equals(u.Anchor))
+        {
+            var (ax, ay) = Map.WorldToCell(u.Anchor);
+            u.HasMoveOrder = true;
+            u.MoveTarget = u.Anchor;
+            u.Path = GetField(ax, ay);
+            u.PathVersion = Map.Version;
+        }
+        u.HasAnchor = false;
     }
 
     /// <summary>Resolves a target id to (position, alive) for unit or building targets.

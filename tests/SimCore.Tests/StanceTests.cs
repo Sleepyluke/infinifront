@@ -90,4 +90,33 @@ public class StanceTests
         Assert.False(w.GetUnit(guard)!.HasAnchor);
         Assert.Equal(0, w.GetUnit(guard)!.AttackTargetId);
     }
+
+    [Fact]
+    public void Defend_Unit_Returns_To_Post_After_Engagement()
+    {
+        var w = new SimWorld(new MapGrid(40, 40), seed: 1);
+        var guard = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 50, Gun());
+        w.Step(new Command[] { new SetStanceCommand(0, new[] { guard }, Stance.Defend) });
+        var bait = w.SpawnUnit(1, w.Map.CellCenter(9, 5), Fix.FromFraction(3, 4), 500);
+        w.Step(System.Array.Empty<Command>()); // engage + anchor
+        w.Step(new Command[] { new MoveCommand(1, new[] { bait }, w.Map.CellCenter(35, 5)) });
+        for (int i = 0; i < 300 && !(w.GetUnit(guard)!.AttackTargetId == 0 && !w.GetUnit(guard)!.HasMoveOrder); i++)
+            w.Step(System.Array.Empty<Command>());
+        var (gx, gy) = w.Map.WorldToCell(w.GetUnit(guard)!.Position);
+        Assert.Equal((5, 5), (gx, gy));     // back at post
+        Assert.False(w.GetUnit(guard)!.HasAnchor);
+    }
+
+    [Fact]
+    public void Switching_To_Passive_Breaks_Anchored_Engagement()
+    {
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        var guard = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 50, Gun());
+        w.SpawnUnit(1, w.Map.CellCenter(9, 5), Fix.FromFraction(1, 2), 500);
+        w.Step(System.Array.Empty<Command>()); // idle-acquire
+        Assert.NotEqual(0, w.GetUnit(guard)!.AttackTargetId);
+        w.Step(new Command[] { new SetStanceCommand(0, new[] { guard }, Stance.Passive) });
+        Assert.Equal(0, w.GetUnit(guard)!.AttackTargetId);
+        Assert.False(w.GetUnit(guard)!.HasAnchor);
+    }
 }
