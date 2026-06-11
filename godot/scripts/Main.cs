@@ -7,6 +7,7 @@ public partial class Main : Node2D
     public SimRunner Runner { get; private set; } = null!;
     public ViewSync View { get; private set; } = null!;
     public SelectionController Selection { get; private set; } = null!;
+    public CommandController Commands { get; private set; } = null!;
 
     public override void _Ready()
     {
@@ -29,6 +30,15 @@ public partial class Main : Node2D
         AddChild(Selection);
         Selection.Init(viewSync, Runner);
         Runner.Ticked += Selection.PruneDead;
+
+        // Order matters: Commands added AFTER Selection so it appears later in the tree.
+        // Godot processes _UnhandledInput in REVERSE tree order (later siblings first),
+        // so CommandController sees input before SelectionController. It consumes
+        // left-clicks ONLY when armed (attack-move or ghost active); otherwise the event
+        // falls through to Selection for normal drag/click selection.
+        Commands = new CommandController { Name = "Commands" };
+        AddChild(Commands);
+        Commands.Init(Runner, Selection, viewSync);
 
         GD.Print($"LlmRts boot OK units={Runner.World.Units.Count} buildings={Runner.World.Buildings.Count}");
     }

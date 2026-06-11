@@ -59,7 +59,11 @@ public partial class SelectionController : Node2D
             .Where(v => v.OwnerId == ControlledPlayer && v.Position.DistanceTo(worldPx) < 24)
             .OrderBy(v => v.Position.DistanceTo(worldPx))
             .FirstOrDefault();
-        if (hit is not null) SelectedUnits.Add(hit.UnitId);
+        if (hit is not null)
+        {
+            SelectedUnits.Add(hit.UnitId);
+            SelectedBuilding = 0; // unit and building selection are mutually exclusive
+        }
         else
         {
             var (cx, cy) = RenderMath.PxToCell(worldPx);
