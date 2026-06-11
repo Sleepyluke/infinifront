@@ -5,13 +5,23 @@ using Xunit;
 
 public class DeterminismTests
 {
-    /// <summary>Standard scenario v2.1: 20 armed units (every 5th fast), walls, movement,
-    /// pitched battle, mid-battle kiting (leash drops), and an explicit attack order.</summary>
+    // Deterministic entity id of the barracks: node=1, units 2-21, worker=22, depot=23, rax=24.
+    // If spawn order in Scenario() changes, update this and re-pin the golden constant.
+    private const int RaxId = 24;
+
+    /// <summary>Scenario v3: pitched battle (kiters → leash; explicit attack) PLUS a parallel
+    /// economy — build depot + barracks, harvest a node to depletion, train marines mid-run.
+    /// Every economy system (placement, construction, supply, production, harvest, node
+    /// removal/passability restore) executes inside the hashed trajectory.</summary>
     private static (SimWorld world, Dictionary<int, List<Command>> script) Scenario()
     {
         var map = new MapGrid(40, 40);
         for (int y = 5; y < 35; y++) map.SetPassable(20, y, false);
         var w = new SimWorld(map, seed: 1234);
+        w.Players[0].Minerals = 400;
+        w.Players[1].Minerals = 400;
+
+        var nodeId = w.AddResourceNode(10, 12, amount: 10);
 
         var ids = new List<int>();
         for (int i = 0; i < 20; i++)
@@ -21,21 +31,33 @@ public class DeterminismTests
             ids.Add(w.SpawnUnit(i % 2, w.Map.CellCenter(2 + i % 5, 2 + i / 5), speed, 60, weapon));
         }
 
+        var workerSpec = new UnitSpec(30, Fix.FromFraction(1, 2), 50, 1, 10,
+            Harvester: new HarvesterSpec(CarryCapacity: 5, GatherTicks: 4));
+        var worker = w.SpawnUnit(0, w.Map.CellCenter(8, 10), workerSpec);
+        w.Players[0].SupplyCap = 4; // headroom for worker + first marine before depot completes
+
+        var depotSpec = new BuildingSpec(100, 2, 2, 100, BuildTimeTicks: 30, SupplyProvided: 8, IsDepot: true);
+        var raxSpec = new BuildingSpec(150, 2, 2, 150, BuildTimeTicks: 40, CanTrain: true);
+        var marineSpec = new UnitSpec(40, Fix.FromFraction(1, 2), 50, 1, 25,
+            Weapon: new WeaponSpec(6, Fix.FromInt(2), 5));
+
         int[] Owned(int owner) => ids.FindAll(i => w.GetUnit(i)!.OwnerId == owner).ToArray();
 
         var script = new Dictionary<int, List<Command>>
         {
-            [0] = new() { new MoveCommand(0, Owned(0), w.Map.CellCenter(35, 35)) },
+            [0] = new()
+            {
+                new MoveCommand(0, Owned(0), w.Map.CellCenter(35, 35)),
+                new BuildCommand(0, worker, depotSpec, 7, 11),       // worker at (8,10) is in range
+                new HarvestCommand(0, new[] { worker }, nodeId),     // harvest while depot builds
+            },
             [50] = new() { new MoveCommand(1, Owned(1), w.Map.CellCenter(35, 2)) },
+            [80] = new() { new BuildCommand(0, worker, raxSpec, 11, 9) }, // ignored if worker out of range — deterministic either way
             [120] = new() { new MoveCommand(0, new[] { ids[0], ids[2] }, w.Map.CellCenter(2, 38)) },
-            // v2: armies attack-move into each other; fast units kite (leash drops); explicit attack at 350
             [200] = new() { new AttackMoveCommand(0, Owned(0), w.Map.CellCenter(35, 2)) },
             [220] = new() { new AttackMoveCommand(1, Owned(1), w.Map.CellCenter(35, 35)) },
-            // fast owner-1 units flee east mid-battle → attack-movers leash-drop them
-            // (tick 230, not later: ids[5] dies ~tick 249; verified 8 leash drops fire)
             [230] = new() { new MoveCommand(1, new[] { ids[5], ids[15] }, w.Map.CellCenter(38, 20)) },
-            // explicit attack order (unleashed chase + IsAttackMoving clear) inside the net;
-            // ids[11] is verified alive at tick 350 (ids[5]/ids[15] are dead by then)
+            [250] = new() { new TrainCommand(0, RaxId, marineSpec), new TrainCommand(0, RaxId, marineSpec) },
             [350] = new() { new AttackCommand(0, Owned(0), ids[11]) },
         };
         return (w, script);
@@ -96,5 +118,5 @@ public class DeterminismTests
         Assert.Equal(GoldenTrajectoryHash, combined);
     }
 
-    private const ulong GoldenTrajectoryHash = 4596672879635899697UL;
+    private const ulong GoldenTrajectoryHash = 1370474808887006678UL;
 }
