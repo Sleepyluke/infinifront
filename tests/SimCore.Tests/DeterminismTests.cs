@@ -5,14 +5,19 @@ using Xunit;
 
 public class DeterminismTests
 {
-    // Deterministic entity id of the barracks: node=1, units 2-21, worker=22, depot=23, rax=24.
+    // Deterministic entity ids:
+    //   node=1, base units 2-21, worker=22,
+    //   sniper=23, sniper_target=24, slow_attacker=25, fast_runner=26  [v4b fog units]
+    //   depot=27, rax=28  [placed at runtime via BuildCommand t=0 and t=80]
     // If spawn order in Scenario() changes, update this and re-pin the golden constant.
-    private const int RaxId = 24;
+    private const int RaxId = 28;
 
-    /// <summary>Scenario v3: pitched battle (kiters → leash; explicit attack) PLUS a parallel
-    /// economy — build depot + barracks, harvest a node to depletion, train marines mid-run.
-    /// Every economy system (placement, construction, supply, production, harvest, node
-    /// removal/passability restore) executes inside the hashed trajectory.</summary>
+    /// <summary>Scenario v4b: pitched battle (kiters → leash; explicit attack) PLUS a parallel
+    /// economy — build depot + barracks, harvest a node to depletion, train marines mid-run —
+    /// PLUS fog verification units: a sniper whose explicit attack on a distant target is
+    /// fog-gated at command-application time, and a slow attacker whose chase-drop fires as
+    /// the fast runner escapes beyond sight. Both fog branches diverge vs FogEnabled=false,
+    /// proving fog code executes under the golden hash net.</summary>
     private static (SimWorld world, Dictionary<int, List<Command>> script) Scenario()
     {
         var map = new MapGrid(40, 40);
@@ -41,14 +46,34 @@ public class DeterminismTests
         var marineSpec = new UnitSpec(40, Fix.FromFraction(1, 2), 50, 1, 25,
             Weapon: new WeaponSpec(6, Fix.FromInt(2), 5));
 
+        // ── v4b fog units (IDs 23-26, appended after base units) ─────────────────────────────
+        // Sniper (p0, id=23): long-range weapon (Range=6). Placed left of wall at (2,20).
+        // AcquireBonus=2 → acquire range=8 > sight=7. An explicit AttackCommand at t=5 on
+        // sniper_target (id=24, cell 10,20, distance=8) is fog-gated: cell (10,20) lies
+        // outside sight-7 from (2,20) (dx=8, 64>49=7²) → rejected when FogEnabled=true,
+        // accepted when false — immediate trajectory divergence.
+        var sniperWeapon = new Weapon { Damage = 5, Range = Fix.FromInt(6), CooldownTicks = 10 };
+        var sniperId = w.SpawnUnit(0, w.Map.CellCenter(2, 20), Fix.FromFraction(1, 5), 200, sniperWeapon);
+        var sniperTargetId = w.SpawnUnit(1, w.Map.CellCenter(10, 20), Fix.FromFraction(1, 5), 200);
+
+        // Slow attacker (p0, id=25): Range=2, sight=7, very slow. Placed at (2,25).
+        // Fast runner (p1, id=26): no weapon, very fast, high HP. Placed at (6,25) — distance
+        // 4 from attacker (within sight and chase-range). At t=15 runner gets MoveCommand to
+        // (38,25): it escapes past sight boundary of the attacker. Chase-drop fires when
+        // FogEnabled=true; attacker keeps chasing when false — sustained trajectory divergence.
+        var slowWeapon = new Weapon { Damage = 3, Range = Fix.FromInt(2), CooldownTicks = 12 };
+        var slowAttackerId = w.SpawnUnit(0, w.Map.CellCenter(2, 25), Fix.FromFraction(1, 8), 200, slowWeapon);
+        var fastRunnerId = w.SpawnUnit(1, w.Map.CellCenter(6, 25), Fix.FromFraction(3, 4), 500);
+        // ──────────────────────────────────────────────────────────────────────────────────────
+
         int[] Owned(int owner) => ids.FindAll(i => w.GetUnit(i)!.OwnerId == owner).ToArray();
 
         // Collision-phase unit subsets: funnel two opposing mini-squads through the top gap
         // (wall at x=20 spans y=5..34; gap at y<5 is the only passage from left to right at y≈2).
-        // At tick 105, player-0 units push RIGHT through the gap; player-1 units push LEFT.
-        // Both groups funnel through cells (20,0)..(20,4) from opposite directions — exercises
-        // queueing, blocking, and head-on swaps under the 500-tick golden trajectory.
-        var p0FunnelIds = new[] { ids[6], ids[8], ids[14], ids[16] }; // player-0: ids 8,10,16,18 — all row 3..4 left side
+        // At tick 105, id 8 is the left→right gap crosser for p0; ids 10/16/18 may already be
+        // east of the wall by then. Both p0 and p1 subsets funnel through cells (20,0)..(20,4)
+        // from opposite directions — exercises queueing, blocking, and head-on swaps.
+        var p0FunnelIds = new[] { ids[6], ids[8], ids[14], ids[16] }; // player-0: ids 8,10,16,18 — row 3..4 left side
         var p1FunnelIds = new[] { ids[7], ids[9], ids[13], ids[19] }; // player-1: ids 9,11,15,21
 
         var script = new Dictionary<int, List<Command>>
@@ -59,6 +84,20 @@ public class DeterminismTests
                 new BuildCommand(0, worker, depotSpec, 7, 11),       // worker at (8,10) is in range
                 new HarvestCommand(0, new[] { worker }, nodeId),     // harvest while depot builds
             },
+            // v4b fog branch 1: explicit AttackCommand on a target outside sight (distance 8 > sight 7).
+            // Fog-ON: Apply(AttackCommand) rejects it (IsVisibleTo returns false) → sniperId idle.
+            // Fog-OFF: command accepted → sniperId chases sniperTargetId → trajectory diverges.
+            [5] = new()
+            {
+                new AttackCommand(0, new[] { sniperId }, sniperTargetId),
+                // slow_attacker explicit attack on fast_runner: distance 4 < sight 7 → accepted with fog ON.
+                // Runner will escape at t=15; chase-drop fires when FogEnabled=true.
+                new AttackCommand(0, new[] { slowAttackerId }, fastRunnerId),
+            },
+            // v4b fog branch 2: fast_runner bolts to (38,25); escapes sight of slow_attacker.
+            // Fog-ON: chase-drop (Combat.cs IsVisibleTo check) sets AttackTargetId=0 once runner
+            // crosses x=9 (distance > 7 from attacker at x=2). Fog-OFF: chase persists.
+            [15] = new() { new MoveCommand(1, new[] { fastRunnerId }, w.Map.CellCenter(38, 25)) },
             [50] = new() { new MoveCommand(1, Owned(1), w.Map.CellCenter(35, 2)) },
             [80] = new() { new BuildCommand(0, worker, raxSpec, 11, 9) }, // ignored if worker out of range — deterministic either way
             // v4a: collision phase — opposing squads through the top gap (x=20, y=0..4)
@@ -134,6 +173,6 @@ public class DeterminismTests
         Assert.Equal(GoldenTrajectoryHash, combined);
     }
 
-    private const ulong GoldenTrajectoryHash = 13566286897028861763UL;
+    private const ulong GoldenTrajectoryHash = 14294228700451379442UL;
 
 }
