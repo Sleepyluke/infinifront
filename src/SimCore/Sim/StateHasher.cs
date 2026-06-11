@@ -10,8 +10,8 @@ public static class StateHasher
     /// Unit.Path and Unit.PathVersion are deliberately excluded: derived caches, recomputed
     /// from hashed state (MoveTarget + map).
     /// Other documented exclusions: SimWorld._fieldCache/_fieldCacheVersion (derived,
-    /// version-guarded) and MapGrid passability (immutable during Step in plan 2a —
-    /// MUST be hashed once build/destroy commands can mutate it mid-run).
+    /// version-guarded). MapGrid passability IS hashed (mutable mid-run since buildings
+    /// and node depletion), packed 64 cells per Mix, along with Map.Version.
     /// Patterns for new state: nullable objects need a presence marker before their
     /// fields; never hash collections by iterating a Dictionary (order is undefined).</summary>
     public static ulong Hash(SimWorld world)
@@ -44,7 +44,72 @@ public static class StateHasher
                 h = Mix(h, (ulong)w.CooldownTicks);
                 h = Mix(h, (ulong)w.CooldownRemaining);
             }
+            h = Mix(h, (ulong)u.SupplyCost);
+            h = Mix(h, (ulong)u.HarvestPhase);
+            h = Mix(h, (ulong)u.HarvestNodeId);
+            h = Mix(h, (ulong)u.CarriedMinerals);
+            h = Mix(h, (ulong)u.GatherTicksRemaining);
+            h = Mix(h, u.Harvester is null ? 0UL : 1UL);
+            if (u.Harvester is { } hv)
+            {
+                h = Mix(h, (ulong)hv.CarryCapacity);
+                h = Mix(h, (ulong)hv.GatherTicks);
+            }
         }
+
+        foreach (var p in world.Players)
+        {
+            h = Mix(h, (ulong)p.Minerals);
+            h = Mix(h, (ulong)p.SupplyUsed);
+            h = Mix(h, (ulong)p.SupplyCap);
+        }
+
+        h = Mix(h, (ulong)world.Buildings.Count);
+        foreach (var b in world.Buildings)
+        {
+            h = Mix(h, (ulong)b.Id);
+            h = Mix(h, (ulong)b.OwnerId);
+            h = Mix(h, (ulong)b.CellX);
+            h = Mix(h, (ulong)b.CellY);
+            h = Mix(h, (ulong)b.Hp);
+            h = Mix(h, b.IsComplete ? 1UL : 0UL);
+            h = Mix(h, (ulong)b.BuildProgress);
+            h = Mix(h, (ulong)b.Spec.MaxHp);
+            h = Mix(h, (ulong)b.Spec.Width);
+            h = Mix(h, (ulong)b.Spec.Height);
+            h = Mix(h, (ulong)b.Spec.SupplyProvided);
+            h = Mix(h, b.Spec.IsDepot ? 1UL : 0UL);
+            h = Mix(h, b.Spec.CanTrain ? 1UL : 0UL);
+            h = Mix(h, (ulong)b.Queue.Count);
+            foreach (var item in b.Queue)
+            {
+                h = Mix(h, (ulong)item.RemainingTicks);
+                h = Mix(h, (ulong)item.Spec.MaxHp);
+                h = Mix(h, (ulong)item.Spec.Speed.Raw);
+                h = Mix(h, (ulong)item.Spec.SupplyCost);
+            }
+        }
+
+        h = Mix(h, (ulong)world.Nodes.Count);
+        foreach (var n in world.Nodes)
+        {
+            h = Mix(h, (ulong)n.Id);
+            h = Mix(h, (ulong)n.CellX);
+            h = Mix(h, (ulong)n.CellY);
+            h = Mix(h, (ulong)n.Remaining);
+        }
+
+        // Map passability — mutable mid-run since buildings/nodes; packed 64 cells per Mix.
+        h = Mix(h, (ulong)world.Map.Version);
+        ulong acc = 0;
+        int bits = 0;
+        for (int y = 0; y < world.Map.Height; y++)
+            for (int x = 0; x < world.Map.Width; x++)
+            {
+                acc = (acc << 1) | (world.Map.IsPassable(x, y) ? 1UL : 0UL);
+                if (++bits == 64) { h = Mix(h, acc); acc = 0; bits = 0; }
+            }
+        if (bits > 0) h = Mix(h, acc);
         return h;
     }
 

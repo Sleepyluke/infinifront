@@ -83,4 +83,46 @@ public class StateHasherTests
         b.GetUnit(1)!.Weapon = new Weapon { Damage = 0, Range = Fix.Zero, CooldownTicks = 0 };
         Assert.NotEqual(StateHasher.Hash(a), StateHasher.Hash(b));
     }
+
+    [Fact]
+    public void Minerals_Change_Changes_Hash()
+    {
+        var a = World();
+        var b = World();
+        b.Players[0].Minerals = 50;
+        Assert.NotEqual(StateHasher.Hash(a), StateHasher.Hash(b));
+    }
+
+    [Fact]
+    public void Passability_Change_Changes_Hash()
+    {
+        var a = World();
+        var b = World();
+        b.Map.SetPassable(3, 3, false);
+        Assert.NotEqual(StateHasher.Hash(a), StateHasher.Hash(b));
+    }
+
+    [Fact]
+    public void Building_Hp_Change_Changes_Hash()
+    {
+        var a = World();
+        var b = World();
+        // identical buildings → equal hash; then drift hp
+        var specA = new BuildingSpec(100, 2, 2, 100, 10);
+        var specB = new BuildingSpec(100, 2, 2, 100, 10);
+        a.PlaceBuilding(0, specA, 8, 8);
+        b.PlaceBuilding(0, specB, 8, 8);
+        Assert.Equal(StateHasher.Hash(a), StateHasher.Hash(b));
+        b.Buildings[0].Hp = 1;
+        Assert.NotEqual(StateHasher.Hash(a), StateHasher.Hash(b));
+    }
+
+    [Fact]
+    public void Harvest_State_Changes_Hash()
+    {
+        var a = World();
+        var b = World();
+        b.GetUnit(1)!.CarriedMinerals = 3;
+        Assert.NotEqual(StateHasher.Hash(a), StateHasher.Hash(b));
+    }
 }
