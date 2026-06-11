@@ -4,6 +4,7 @@
   "iconOutput": "godot/assets/icons/fabber.png",
   "icon": { "x": 2584, "y": 1310, "w": 215, "h": 214 },
   "baselinePx": 8,
+  "_note": "Attack-N reuses attack-S rect (v0 approximation).",
   "rows": [
     { "anim": "idle",   "facing": "S", "frames": 4, "rect": { "x": 8,    "y": 40,   "w": 952,  "h": 213 } },
     { "anim": "idle",   "facing": "W", "frames": 4, "rect": { "x": 8,    "y": 528,  "w": 952,  "h": 203 } },

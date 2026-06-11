@@ -4,6 +4,7 @@
   "iconOutput": "godot/assets/icons/trooper.png",
   "icon": { "x": 2582, "y": 1311, "w": 218, "h": 213 },
   "baselinePx": 8,
+  "_note": "Attack-N reuses attack-S rect (v0 approximation). Sheet mislabels: true walk-S is under IDLE NORTH label (row 11); idle-N uses IDLE (STATIONARY) strip (row 10).",
   "rows": [
     { "anim": "idle",   "facing": "S", "frames": 4, "rect": { "x": 20,   "y": 40,   "w": 948,  "h": 211 } },
     { "anim": "idle",   "facing": "W", "frames": 4, "rect": { "x": 305,  "y": 296,  "w": 948,  "h": 205 } },

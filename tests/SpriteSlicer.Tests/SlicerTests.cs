@@ -36,6 +36,18 @@ public class SlicerTests
     }
 
     [Fact]
+    public void ChromaKey_Clears_Magenta_Blend_Pixels_Keeps_Solid_Colors()
+    {
+        var img = Filled(3, 1, new Rgba32(180, 60, 170, 255)); // antialiased magenta blend
+        img[1, 0] = new Rgba32(200, 30, 30, 255);  // pure red — must survive
+        img[2, 0] = new Rgba32(0, 200, 0, 255);    // green — must survive
+        Slicer.ChromaKey(img);
+        Assert.Equal(0, img[0, 0].A);
+        Assert.Equal(255, img[1, 0].A);
+        Assert.Equal(255, img[2, 0].A);
+    }
+
+    [Fact]
     public void SliceRow_Produces_FrameCount_Equal_Cells()
     {
         // Non-zero rect origin + one distinct marker pixel per frame region:

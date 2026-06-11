@@ -4,6 +4,7 @@
   "iconOutput": "godot/assets/icons/tank.png",
   "icon": { "x": 2572, "y": 1308, "w": 232, "h": 218 },
   "baselinePx": 4,
+  "_note": "Attack-N reuses attack-S rect (v0 approximation).",
   "rows": [
     { "anim": "idle",   "facing": "S", "frames": 4, "rect": { "x": 36,   "y": 48,   "w": 948,  "h": 199 } },
     { "anim": "idle",   "facing": "W", "frames": 4, "rect": { "x": 8,    "y": 328,  "w": 948,  "h": 157 } },
