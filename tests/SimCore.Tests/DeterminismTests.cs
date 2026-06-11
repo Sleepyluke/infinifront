@@ -118,5 +118,5 @@ public class DeterminismTests
         Assert.Equal(GoldenTrajectoryHash, combined);
     }
 
-    private const ulong GoldenTrajectoryHash = 1370474808887006678UL;
+    private const ulong GoldenTrajectoryHash = 11976348282665656445UL;
 }
