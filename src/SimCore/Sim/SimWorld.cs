@@ -81,6 +81,7 @@ public sealed partial class SimWorld
         UpdateCombat();
         MoveUnits();
         RemoveDead();
+        RemoveDeadBuildings();
         Tick++;
     }
 
@@ -131,6 +132,16 @@ public sealed partial class SimWorld
                     u.Path = amField;
                     u.PathVersion = Map.Version;
                 }
+                break;
+            case BuildCommand bc:
+                var builder = GetUnit(bc.WorkerUnitId);
+                if (builder is null || builder.OwnerId != bc.PlayerId) break;
+                if (_players[bc.PlayerId].Minerals < bc.Spec.MineralCost) break;
+                var siteCenter = FootprintCenter(bc.CellX, bc.CellY, bc.Spec.Width, bc.Spec.Height);
+                if ((builder.Position - siteCenter).LengthSquared() > Fix.FromInt(16)) break; // worker within 4 of site center
+                if (!FootprintPlaceable(bc.CellX, bc.CellY, bc.Spec.Width, bc.Spec.Height)) break;
+                _players[bc.PlayerId].Minerals -= bc.Spec.MineralCost;
+                PlaceBuilding(bc.PlayerId, bc.Spec, bc.CellX, bc.CellY);
                 break;
         }
     }

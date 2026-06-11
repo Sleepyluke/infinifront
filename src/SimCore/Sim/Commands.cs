@@ -10,3 +10,5 @@ public sealed record MoveCommand(int PlayerId, int[] UnitIds, FixVec Target) : C
 public sealed record AttackCommand(int PlayerId, int[] UnitIds, int TargetId) : Command(PlayerId);
 
 public sealed record AttackMoveCommand(int PlayerId, int[] UnitIds, FixVec Target) : Command(PlayerId);
+
+public sealed record BuildCommand(int PlayerId, int WorkerUnitId, BuildingSpec Spec, int CellX, int CellY) : Command(PlayerId);
