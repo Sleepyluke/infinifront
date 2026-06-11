@@ -43,6 +43,14 @@ public class DeterminismTests
 
         int[] Owned(int owner) => ids.FindAll(i => w.GetUnit(i)!.OwnerId == owner).ToArray();
 
+        // Collision-phase unit subsets: funnel two opposing mini-squads through the top gap
+        // (wall at x=20 spans y=5..34; gap at y<5 is the only passage from left to right at y≈2).
+        // At tick 105, player-0 units push RIGHT through the gap; player-1 units push LEFT.
+        // Both groups funnel through cells (20,0)..(20,4) from opposite directions — exercises
+        // queueing, blocking, and head-on swaps under the 500-tick golden trajectory.
+        var p0FunnelIds = new[] { ids[6], ids[8], ids[14], ids[16] }; // player-0: ids 8,10,16,18 — all row 3..4 left side
+        var p1FunnelIds = new[] { ids[7], ids[9], ids[13], ids[19] }; // player-1: ids 9,11,15,21
+
         var script = new Dictionary<int, List<Command>>
         {
             [0] = new()
@@ -53,6 +61,14 @@ public class DeterminismTests
             },
             [50] = new() { new MoveCommand(1, Owned(1), w.Map.CellCenter(35, 2)) },
             [80] = new() { new BuildCommand(0, worker, raxSpec, 11, 9) }, // ignored if worker out of range — deterministic either way
+            // v4a: collision phase — opposing squads through the top gap (x=20, y=0..4)
+            // Player-0 subset crosses left→right; player-1 subset crosses right→left.
+            // Head-on traffic through the 5-cell gap exercises queueing + head-on swaps.
+            [105] = new()
+            {
+                new MoveCommand(0, p0FunnelIds, w.Map.CellCenter(38, 2)),  // p0 → right
+                new MoveCommand(1, p1FunnelIds, w.Map.CellCenter(2, 2)),   // p1 → left
+            },
             [120] = new() { new MoveCommand(0, new[] { ids[0], ids[2] }, w.Map.CellCenter(2, 38)) },
             [200] = new() { new AttackMoveCommand(0, Owned(0), w.Map.CellCenter(35, 2)) },
             [220] = new() { new AttackMoveCommand(1, Owned(1), w.Map.CellCenter(35, 35)) },
@@ -118,5 +134,6 @@ public class DeterminismTests
         Assert.Equal(GoldenTrajectoryHash, combined);
     }
 
-    private const ulong GoldenTrajectoryHash = 10424847437700356033UL;
+    private const ulong GoldenTrajectoryHash = 4944078335681059763UL;
+
 }
