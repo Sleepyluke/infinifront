@@ -166,6 +166,12 @@ public sealed partial class SimWorld
             u.Path = GetField(ax, ay);
             u.PathVersion = Map.Version;
         }
+        else
+        {
+            // AutoAttack or Defend at-anchor: stop immediately, clearing residual chase order.
+            u.HasMoveOrder = false;
+            u.Path = null;
+        }
         u.HasAnchor = false;
     }
 

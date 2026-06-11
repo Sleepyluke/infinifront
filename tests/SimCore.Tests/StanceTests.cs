@@ -119,4 +119,26 @@ public class StanceTests
         Assert.Equal(0, w.GetUnit(guard)!.AttackTargetId);
         Assert.False(w.GetUnit(guard)!.HasAnchor);
     }
+
+    [Fact]
+    public void Switching_To_Passive_Breaks_Anchored_Engagement_And_Clears_Chase_Order()
+    {
+        // Gun range=3, so acquire at range+2=5. Bait within acquire range triggers engagement,
+        // then moves out of weapon range to trigger chase. Switching to Passive must clear
+        // the residual chase move order.
+        var w = new SimWorld(new MapGrid(40, 40), seed: 1);
+        var guard = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 50, Gun());
+        var bait = w.SpawnUnit(1, w.Map.CellCenter(10, 5), Fix.FromFraction(1, 2), 500); // distance 5, within acquire range
+        w.Step(System.Array.Empty<Command>()); // guard acquires and anchors, chases with move order
+        var g = w.GetUnit(guard)!;
+        Assert.NotEqual(0, g.AttackTargetId); // acquired
+        Assert.True(g.HasAnchor); // anchored
+        Assert.True(g.HasMoveOrder); // mid-chase (distance 5 > weapon range 3)
+        w.Step(new Command[] { new SetStanceCommand(0, new[] { guard }, Stance.Passive) });
+        g = w.GetUnit(guard)!;
+        Assert.Equal(0, g.AttackTargetId); // cleared
+        Assert.False(g.HasAnchor); // cleared
+        Assert.False(g.HasMoveOrder); // residual chase order cleared
+        Assert.Null(g.Path); // path cleared
+    }
 }

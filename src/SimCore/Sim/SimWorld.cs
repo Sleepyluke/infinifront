@@ -211,6 +211,10 @@ public sealed partial class SimWorld
                     {
                         u.AttackTargetId = 0;
                         u.HasAnchor = false;
+                        // Anchored units' move orders are always chase artifacts (explicit orders clear anchors),
+                        // so this is safe and matches "stand down where you are".
+                        u.HasMoveOrder = false;
+                        u.Path = null;
                     }
                 }
                 break;
