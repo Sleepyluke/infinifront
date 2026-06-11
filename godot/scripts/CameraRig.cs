@@ -42,8 +42,18 @@ public partial class CameraRig : Camera2D
     {
         if (e is InputEventMouseButton { Pressed: true } mb)
         {
-            if (mb.ButtonIndex == MouseButton.WheelUp && _zoomIdx < ZoomSteps.Length - 1) { _zoomIdx++; ApplyZoom(); }
-            if (mb.ButtonIndex == MouseButton.WheelDown && _zoomIdx > 0) { _zoomIdx--; ApplyZoom(); }
+            if (mb.ButtonIndex == MouseButton.WheelUp && _zoomIdx < ZoomSteps.Length - 1)
+            {
+                _zoomIdx++;
+                ApplyZoom();
+                GetViewport().SetInputAsHandled();
+            }
+            else if (mb.ButtonIndex == MouseButton.WheelDown && _zoomIdx > 0)
+            {
+                _zoomIdx--;
+                ApplyZoom();
+                GetViewport().SetInputAsHandled();
+            }
         }
     }
 

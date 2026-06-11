@@ -6,6 +6,7 @@ public partial class Main : Node2D
 {
     public SimRunner Runner { get; private set; } = null!;
     public ViewSync View { get; private set; } = null!;
+    public SelectionController Selection { get; private set; } = null!;
 
     public override void _Ready()
     {
@@ -23,6 +24,11 @@ public partial class Main : Node2D
         View = viewSync;
 
         AddChild(new CameraRig { Name = "Camera" });
+
+        Selection = new SelectionController { Name = "Selection" };
+        AddChild(Selection);
+        Selection.Init(viewSync, Runner);
+        Runner.Ticked += Selection.PruneDead;
 
         GD.Print($"LlmRts boot OK units={Runner.World.Units.Count} buildings={Runner.World.Buildings.Count}");
     }
