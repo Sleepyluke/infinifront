@@ -23,4 +23,11 @@ public sealed class Unit
 
     public int SupplyCost { get; set; }
     public HarvesterSpec? Harvester { get; set; }
+
+    public HarvestPhase HarvestPhase { get; set; }
+    public int HarvestNodeId { get; set; }
+    public int CarriedMinerals { get; set; }
+    public int GatherTicksRemaining { get; set; }
 }
+
+public enum HarvestPhase : byte { None = 0, MovingToNode = 1, Gathering = 2, Returning = 3 }

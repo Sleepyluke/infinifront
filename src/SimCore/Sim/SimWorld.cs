@@ -80,6 +80,7 @@ public sealed partial class SimWorld
         foreach (var cmd in commands) Apply(cmd);
         UpdateCombat();
         MoveUnits();
+        UpdateHarvest();
         UpdateConstruction();
         UpdateProduction();
         RemoveDead();
@@ -100,6 +101,7 @@ public sealed partial class SimWorld
                     if (u is null || u.OwnerId != mv.PlayerId) continue;
                     u.IsAttackMoving = false;
                     u.AttackTargetId = 0;
+                    u.HarvestPhase = HarvestPhase.None;
                     u.HasMoveOrder = true;
                     u.MoveTarget = mv.Target;
                     u.Path = field;
@@ -157,6 +159,20 @@ public sealed partial class SimWorld
                 ps.Minerals -= tc.Spec.MineralCost;
                 ps.SupplyUsed += tc.Spec.SupplyCost; // reserve supply at enqueue
                 trainer.Queue.Add(new TrainingItem { Spec = tc.Spec, RemainingTicks = tc.Spec.BuildTimeTicks });
+                break;
+            case HarvestCommand hc:
+                if (GetNode(hc.NodeId) is null) break;
+                foreach (var id in hc.UnitIds)
+                {
+                    var u = GetUnit(id);
+                    if (u is null || u.OwnerId != hc.PlayerId || u.Harvester is null) continue;
+                    u.HarvestPhase = HarvestPhase.MovingToNode;
+                    u.HarvestNodeId = hc.NodeId;
+                    u.AttackTargetId = 0;
+                    u.IsAttackMoving = false;
+                    u.HasMoveOrder = false; // UpdateHarvest issues the approach
+                    u.Path = null;
+                }
                 break;
         }
     }

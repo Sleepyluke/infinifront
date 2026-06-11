@@ -14,3 +14,5 @@ public sealed record AttackMoveCommand(int PlayerId, int[] UnitIds, FixVec Targe
 public sealed record BuildCommand(int PlayerId, int WorkerUnitId, BuildingSpec Spec, int CellX, int CellY) : Command(PlayerId);
 
 public sealed record TrainCommand(int PlayerId, int BuildingId, UnitSpec Spec) : Command(PlayerId);
+
+public sealed record HarvestCommand(int PlayerId, int[] UnitIds, int NodeId) : Command(PlayerId);
