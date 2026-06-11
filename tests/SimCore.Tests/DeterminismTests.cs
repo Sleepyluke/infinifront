@@ -12,12 +12,18 @@ public class DeterminismTests
     // If spawn order in Scenario() changes, update this and re-pin the golden constant.
     private const int RaxId = 28;
 
-    /// <summary>Scenario v4b: pitched battle (kiters → leash; explicit attack) PLUS a parallel
+    /// <summary>Scenario v5: pitched battle (kiters → leash; explicit attack) PLUS a parallel
     /// economy — build depot + barracks, harvest a node to depletion, train marines mid-run —
     /// PLUS fog verification units: a sniper whose explicit attack on a distant target is
     /// fog-gated at command-application time, and a slow attacker whose chase-drop fires as
     /// the fast runner escapes beyond sight. Both fog branches diverge vs FogEnabled=false,
-    /// proving fog code executes under the golden hash net.</summary>
+    /// proving fog code executes under the golden hash net.
+    ///
+    /// New in v5:
+    ///   t=2   Defend stance on sniper (id 23) + slow_attacker (id 25) — fog combat units
+    ///   t=60  Patrol on slow_attacker (id 25) from (2,25)→(2,32) — south of fog corridor, legs swap
+    ///   t=245 SetRallyCommand on rax (id 28) → (25,15) — marines trained at t=250 rally there
+    ///   t=400 DestroyCommand on sniper (id 23) — fighting sniperTarget (200hp at range 6), alive at t=399</summary>
     private static (SimWorld world, Dictionary<int, List<Command>> script) Scenario()
     {
         var map = new MapGrid(40, 40);
@@ -84,6 +90,15 @@ public class DeterminismTests
                 new BuildCommand(0, worker, depotSpec, 7, 11),       // worker at (8,10) is in range
                 new HarvestCommand(0, new[] { worker }, nodeId),     // harvest while depot builds
             },
+            // v5 new: Defend stance on sniper (23) + slow_attacker (25).
+            // sniper stays isolated at (2,20) — fog-gates any acquisition.
+            // slow_attacker at (2,25) gets an explicit AttackCommand at t=5 (clears anchor),
+            // then its explicit target flees at t=15 (fog chase-drop at distance>7).
+            // After disengage, slow_attacker is idle-Defend and stays near (2,25).
+            [2] = new()
+            {
+                new SetStanceCommand(0, new[] { sniperId, slowAttackerId }, Stance.Defend),
+            },
             // v4b fog branch 1: explicit AttackCommand on a target outside sight (distance 8 > sight 7).
             // Fog-ON: Apply(AttackCommand) rejects it (IsVisibleTo returns false) → sniperId idle.
             // Fog-OFF: command accepted → sniperId chases sniperTargetId → trajectory diverges.
@@ -99,6 +114,16 @@ public class DeterminismTests
             // crosses x=9 (distance > 7 from attacker at x=2). Fog-OFF: chase persists.
             [15] = new() { new MoveCommand(1, new[] { fastRunnerId }, w.Map.CellCenter(38, 25)) },
             [50] = new() { new MoveCommand(1, Owned(1), w.Map.CellCenter(35, 2)) },
+            // v5 new: Patrol slow_attacker (id 25) from (2,25)→(2,32).
+            // By t=60 the slow_attacker's explicit target (fastRunnerId=26) has fled (fog chase-drop
+            // at t≈20-25); slow_attacker is idle near (2,25) in Defend stance.
+            // South corridor (y=25-32, x=2) is enemy-free: sniperTarget at (10,20) is >7 cells
+            // from any patrol cell (min dist ≈9.4), fastRunner is at (38,25). No acquisition fires.
+            // Speed=1/8 → ~56 ticks/leg. By t=400, ~3 leg swaps confirmed via temp instrumentation.
+            [60] = new()
+            {
+                new PatrolCommand(0, new[] { slowAttackerId }, w.Map.CellCenter(2, 32)),
+            },
             [80] = new() { new BuildCommand(0, worker, raxSpec, 11, 9) }, // ignored if worker out of range — deterministic either way
             // v4a: collision phase — opposing squads through the top gap (x=20, y=0..4)
             // Player-0 subset crosses left→right; player-1 subset crosses right→left.
@@ -112,9 +137,24 @@ public class DeterminismTests
             [200] = new() { new AttackMoveCommand(0, Owned(0), w.Map.CellCenter(35, 2)) },
             [220] = new() { new AttackMoveCommand(1, Owned(1), w.Map.CellCenter(35, 35)) },
             [230] = new() { new MoveCommand(1, new[] { ids[5], ids[15] }, w.Map.CellCenter(38, 20)) },
+            // v5 new: SetRallyCommand on rax before the t=250 trains so spawned marines move
+            // toward (25,15). Rally evidence: marines have HasMoveOrder set after spawn.
+            [245] = new()
+            {
+                new SetRallyCommand(0, RaxId, w.Map.CellCenter(25, 15)),
+            },
             [250] = new() { new TrainCommand(0, RaxId, marineSpec), new TrainCommand(0, RaxId, marineSpec) },
             [350] = new() { new AttackCommand(0, Owned(0), ids[11]) },
+            // v5 new: DestroyCommand on sniper (id=23). By t=400 the sniper has been fighting
+            // sniperTarget (200hp, 5dmg/10ticks — target nearly dead but sniper fully alive at 200hp).
+            // The sniper idle-acquired sniperTarget after the fastRunner fled (fog chase-drop).
+            // Deterministically alive at t=399, confirmed via temp instrumentation.
+            [400] = new()
+            {
+                new DestroyCommand(0, new[] { sniperId }),
+            },
         };
+
         return (w, script);
     }
 
@@ -173,6 +213,6 @@ public class DeterminismTests
         Assert.Equal(GoldenTrajectoryHash, combined);
     }
 
-    private const ulong GoldenTrajectoryHash = 17085886648268516934UL;
+    private const ulong GoldenTrajectoryHash = 4005804941942785108UL;
 
 }
