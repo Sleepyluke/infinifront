@@ -103,6 +103,9 @@ public static class StateHasher
                 h = Mix(h, (ulong)item.Spec.Speed.Raw);
                 h = Mix(h, (ulong)item.Spec.SupplyCost);
             }
+            h = Mix(h, b.HasRally ? 1UL : 0UL);
+            h = Mix(h, (ulong)b.RallyPoint.X.Raw);
+            h = Mix(h, (ulong)b.RallyPoint.Y.Raw);
         }
 
         h = Mix(h, (ulong)world.Nodes.Count);

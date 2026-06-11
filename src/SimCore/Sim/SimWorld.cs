@@ -250,6 +250,17 @@ public sealed partial class SimWorld
                     u.PathVersion = Map.Version;
                 }
                 break;
+            case SetRallyCommand sr:
+                var srBuilding = GetBuilding(sr.BuildingId);
+                if (srBuilding is null || srBuilding.OwnerId != sr.PlayerId) break;
+                if (sr.Clear)
+                    srBuilding.HasRally = false;
+                else
+                {
+                    srBuilding.HasRally = true;
+                    srBuilding.RallyPoint = sr.Target;
+                }
+                break;
         }
     }
 

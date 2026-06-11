@@ -1,3 +1,5 @@
+using SimCore.Math;
+
 namespace SimCore.Sim;
 
 /// <summary>Mutable building state. Shares the entity id space with units.</summary>
@@ -14,6 +16,9 @@ public sealed class Building
     public System.Collections.Generic.List<TrainingItem> Queue { get; } = new(); // index 0 is in production
 
     public const int MaxQueueLength = 5;
+
+    public bool HasRally { get; set; }
+    public FixVec RallyPoint { get; set; }
 }
 
 public sealed class TrainingItem

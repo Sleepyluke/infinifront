@@ -85,6 +85,15 @@ public sealed partial class SimWorld
             if (spawned == 0) continue;
             b.Queue.RemoveAt(0);
             _players[b.OwnerId].SupplyUsed -= item.Spec.SupplyCost;
+            // Rally point: issue the newly spawned unit a move order to the rally cell.
+            if (b.HasRally && _byId.TryGetValue(spawned, out var spawnedUnit))
+            {
+                var (rx, ry) = Map.WorldToCell(b.RallyPoint);
+                spawnedUnit.HasMoveOrder = true;
+                spawnedUnit.MoveTarget = b.RallyPoint;
+                spawnedUnit.Path = GetField(rx, ry);
+                spawnedUnit.PathVersion = Map.Version;
+            }
         }
     }
 
