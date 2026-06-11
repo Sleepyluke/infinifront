@@ -29,6 +29,10 @@ public sealed class Unit
     public int HarvestNodeId { get; set; }
     public int CarriedMinerals { get; set; }
     public int GatherTicksRemaining { get; set; }
+
+    public Stance Stance { get; set; } = Stance.AutoAttack;
 }
 
 public enum HarvestPhase : byte { None = 0, MovingToNode = 1, Gathering = 2, Returning = 3 }
+
+public enum Stance : byte { AutoAttack = 0, Defend = 1, Passive = 2 }

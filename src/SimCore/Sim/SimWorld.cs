@@ -192,6 +192,14 @@ public sealed partial class SimWorld
                     u.Path = null;
                 }
                 break;
+            case SetStanceCommand ss:
+                foreach (var id in ss.UnitIds)
+                {
+                    var u = GetUnit(id);
+                    if (u is null || u.OwnerId != ss.PlayerId) continue;
+                    u.Stance = ss.Stance;
+                }
+                break;
         }
     }
 

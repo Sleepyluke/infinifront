@@ -61,6 +61,7 @@ public static class StateHasher
                 h = Mix(h, (ulong)hv.GatherTicks);
             }
             h = Mix(h, (ulong)u.SightRange);
+            h = Mix(h, (ulong)u.Stance);
         }
 
         foreach (var p in world.Players)
