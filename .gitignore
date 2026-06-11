@@ -3,3 +3,4 @@ obj/
 .godot/
 *.user
 TestResults/
+godot/.godot/

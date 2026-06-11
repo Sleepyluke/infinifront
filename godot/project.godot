@@ -1,0 +1,16 @@
+config_version=5
+
+[application]
+config/name="LlmRts"
+run/main_scene="res://Main.tscn"
+config/features=PackedStringArray("4.6", "C#")
+
+[dotnet]
+project/assembly_name="LlmRts.Godot"
+
+[display]
+window/size/viewport_width=1600
+window/size/viewport_height=900
+
+[rendering]
+textures/canvas_textures/default_texture_filter=0

@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpriteSlicer", "tools\Sprit
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpriteSlicer.Tests", "tests\SpriteSlicer.Tests\SpriteSlicer.Tests.csproj", "{AFF04378-AEF9-4F8E-9BDA-98FDA03B8314}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LlmRts.Godot", "godot\LlmRts.Godot.csproj", "{CDAB4F45-81BA-41B3-8810-76943D1D628A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,6 +44,10 @@ Global
 		{AFF04378-AEF9-4F8E-9BDA-98FDA03B8314}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AFF04378-AEF9-4F8E-9BDA-98FDA03B8314}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AFF04378-AEF9-4F8E-9BDA-98FDA03B8314}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CDAB4F45-81BA-41B3-8810-76943D1D628A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDAB4F45-81BA-41B3-8810-76943D1D628A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDAB4F45-81BA-41B3-8810-76943D1D628A}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDAB4F45-81BA-41B3-8810-76943D1D628A}.Release|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3FCD48AA-6FB9-40CD-8A00-6AAF6E14035D} = {C05221D4-6FED-44C1-B35B-924641C2ED02}
