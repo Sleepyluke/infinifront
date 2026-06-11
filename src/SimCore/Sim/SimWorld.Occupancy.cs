@@ -12,7 +12,7 @@ public sealed partial class SimWorld
     }
 
     public int OccupantAt(int cx, int cy) =>
-        cx < 0 || cy < 0 || cx >= Map.Width || cy >= Map.Height ? 0
+        cx < 0 || cy < 0 || cx >= Map.Width || cy >= Map.Height || _occupancy.Length == 0 ? 0
         : _occupancy[cy * Map.Width + cx];
 
     private void ClaimCell(int cx, int cy, int unitId) => _occupancy[cy * Map.Width + cx] = unitId;

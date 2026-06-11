@@ -77,9 +77,11 @@ public sealed partial class SimWorld
             if (item.RemainingTicks > 0) continue;
             var cell = FindSpawnCell(b);
             if (cell is null) continue; // perimeter blocked — retry next tick (ticks stay clamped at 0)
+            // supply was reserved at enqueue; SpawnUnit adds it again, so subtract the duplicate.
+            // If spawn returns 0 (cell stolen same tick by a mover), don't dequeue — retry next tick.
+            var spawned = SpawnUnit(b.OwnerId, Map.CellCenter(cell.Value.x, cell.Value.y), item.Spec);
+            if (spawned == 0) continue;
             b.Queue.RemoveAt(0);
-            // supply was reserved at enqueue; SpawnUnit adds it again, so subtract the duplicate
-            SpawnUnit(b.OwnerId, Map.CellCenter(cell.Value.x, cell.Value.y), item.Spec);
             _players[b.OwnerId].SupplyUsed -= item.Spec.SupplyCost;
         }
     }

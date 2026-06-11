@@ -212,14 +212,37 @@ public sealed partial class SimWorld
             }
 
             var dist = step.Length();
+            FixVec newPos;
             if (dist <= u.SpeedPerTick)
             {
-                u.Position += step;
-                if (cx == ttx && cy == tty) { u.HasMoveOrder = false; u.Path = null; }
+                newPos = u.Position + step;
             }
             else
             {
-                u.Position += step.Normalized() * u.SpeedPerTick;
+                newPos = u.Position + step.Normalized() * u.SpeedPerTick;
+            }
+
+            // Cell-crossing check: if moving into a new cell, verify it is unoccupied.
+            // Iteration over _units in spawn order = stable priority = deterministic.
+            var (ncx, ncy) = Map.WorldToCell(newPos);
+            if (ncx != cx || ncy != cy)
+            {
+                var occ = OccupantAt(ncx, ncy);
+                if (occ != 0 && occ != u.Id)
+                {
+                    // Destination cell taken — hold position this tick; retry next tick.
+                    // Arrival/stop bookkeeping is deliberately skipped so the order is not burned.
+                    continue;
+                }
+                ReleaseCell(cx, cy, u.Id);
+                ClaimCell(ncx, ncy, u.Id);
+            }
+
+            u.Position = newPos;
+            if (dist <= u.SpeedPerTick && cx == ttx && cy == tty)
+            {
+                u.HasMoveOrder = false;
+                u.Path = null;
             }
         }
     }
