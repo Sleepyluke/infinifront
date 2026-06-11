@@ -24,7 +24,8 @@ public partial class Main : Node2D
         viewSync.Init(Runner);
         View = viewSync;
 
-        AddChild(new CameraRig { Name = "Camera" });
+        var camera = new CameraRig { Name = "Camera" };
+        AddChild(camera);
 
         Selection = new SelectionController { Name = "Selection" };
         AddChild(Selection);
@@ -43,6 +44,10 @@ public partial class Main : Node2D
         var hud = new Hud { Name = "Hud" };
         AddChild(hud);
         hud.Init(Runner, Selection, Commands);
+
+        var minimap = new Minimap { Name = "Minimap" };
+        hud.AddChild(minimap);
+        minimap.Init(Runner, GetNode<CameraRig>("Camera"));
 
         GD.Print($"LlmRts boot OK units={Runner.World.Units.Count} buildings={Runner.World.Buildings.Count}");
     }
