@@ -220,8 +220,11 @@ public sealed partial class SimWorld
                         u.HasMoveOrder = false;
                         u.Path = null;
                     }
-                    // SetStance does NOT cancel an active patrol — the unit keeps looping, just
-                    // with the new stance applied (e.g. switching to Passive stops engaging).
+                    // SetStance does NOT cancel an active patrol — the unit keeps looping.
+                    // For patrolling units, re-derive IsAttackMoving from the new stance so the
+                    // engage mode matches immediately (e.g. Passive → stop engaging; AutoAttack → resume).
+                    if (u.IsPatrolling)
+                        u.IsAttackMoving = u.Weapon is not null && ss.Stance != Stance.Passive;
                 }
                 break;
             case PatrolCommand pc:

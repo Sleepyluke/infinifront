@@ -65,9 +65,9 @@ public class PatrolTests
         // Park an idle unit ON patrol point B. The patroller must still swap legs (one cell short is fine).
         var w = new SimWorld(new MapGrid(30, 30), seed: 1);
         var id = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 50, Gun());
-        // Blocker sits at B — passive, no weapon, different owner so it's neutral to patroller
-        // but blocks the cell. Actually same owner non-fighting is fine too.
-        w.SpawnUnit(1, w.Map.CellCenter(15, 5), Fix.FromFraction(1, 2), 50);
+        // Blocker sits at B — same owner (0) so the armed patroller never attacks it,
+        // ensuring the blocked-path logic is what gets exercised, not the kill path.
+        w.SpawnUnit(0, w.Map.CellCenter(15, 5), Fix.FromFraction(1, 2), 50);
 
         w.Step(new Command[] { new PatrolCommand(0, new[] { id }, w.Map.CellCenter(15, 5)) });
         bool reachedNearB = false, returnedA = false;
@@ -81,5 +81,70 @@ public class PatrolTests
         Assert.True(reachedNearB, "never got close to patrol point B");
         Assert.True(returnedA, "never returned toward patrol point A");
         Assert.True(w.GetUnit(id)!.IsPatrolling);
+    }
+
+    [Fact]
+    public void Armed_Patroller_RelaxClear_At_Chebyshev2_Does_Not_Livelock()
+    {
+        // Regression for the Rule-B livelock: ShouldRelaxArrival Rule B can relax-clear the
+        // move order when the patroller is at Chebyshev 2 of the endpoint (unit behind a
+        // stationary blocker that is itself Chebyshev 1 of the target). The old combat branch
+        // only accepted relaxedArrival at Chebyshev ≤ 1, so it re-issued the march every tick
+        // while MoveUnits immediately re-cleared it — a permanent livelock.
+        //
+        // Geometry: patrol A=(5,5) → B=(14,5).
+        // Same-owner idle blockers at (13,5) and (14,5).
+        //   • Patroller approaching from left tries to enter (13,5); blocker there is at
+        //     Chebyshev 1 of target (14,5) → Rule B fires → relax-clear at the patroller's
+        //     current cell, which is Chebyshev 2 of (14,5).
+        // After fix: combat branch sees relaxedArrival (Chebyshev ≤ 2) → swap legs → patroller
+        // heads back toward A and reaches within Chebyshev 2 of A within the tick budget.
+        var w = new SimWorld(new MapGrid(30, 30), seed: 1);
+        var id = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 50, Gun());
+        // Blockers: (14,5) is the endpoint; (13,5) is Chebyshev 1 of endpoint — triggers Rule B.
+        w.SpawnUnit(0, w.Map.CellCenter(14, 5), Fix.FromFraction(1, 2), 50); // sits ON endpoint
+        w.SpawnUnit(0, w.Map.CellCenter(13, 5), Fix.FromFraction(1, 2), 50); // Chebyshev 1 of endpoint
+
+        w.Step(new Command[] { new PatrolCommand(0, new[] { id }, w.Map.CellCenter(14, 5)) });
+        bool legSwapped = false;
+        for (int i = 0; i < 600; i++)
+        {
+            w.Step(System.Array.Empty<Command>());
+            var (cx, _) = w.Map.WorldToCell(w.GetUnit(id)!.Position);
+            // Patrol swap occurred if patroller is heading back toward A and is close to it.
+            if (cx <= 7) { legSwapped = true; break; }
+        }
+        Assert.True(legSwapped, "patroller livelocked near B — Rule-B relax-clear at Chebyshev 2 was not accepted");
+        Assert.True(w.GetUnit(id)!.IsPatrolling, "patrol should still be active after leg swap");
+    }
+
+    [Fact]
+    public void SetStance_Passive_MidPatrol_Stops_Acquiring_And_AutoAttack_Resumes()
+    {
+        // An armed patroller switched to Passive mid-patrol must stop engaging enemies.
+        // Switching back to AutoAttack must resume engagement.
+        var w = new SimWorld(new MapGrid(30, 30), seed: 1);
+        var id = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 50, Gun());
+        var enemy = w.SpawnUnit(1, w.Map.CellCenter(10, 5), Fix.FromFraction(0, 1), 50); // stationary, in patrol route
+
+        // Set Passive BEFORE issuing patrol so the PatrolCommand inherits the passive stance,
+        // and then verify that switching to AutoAttack mid-patrol resumes engagement.
+        w.Step(new Command[] { new SetStanceCommand(0, new[] { id }, Stance.Passive) });
+        w.Step(new Command[] { new PatrolCommand(0, new[] { id }, w.Map.CellCenter(15, 5)) });
+        Assert.False(w.GetUnit(id)!.IsAttackMoving, "Passive patrol must not be attack-moving");
+        Assert.True(w.GetUnit(id)!.IsPatrolling, "patrol must be active");
+
+        // Run 80 ticks: enemy must survive (passive patroller does not engage).
+        for (int i = 0; i < 80; i++) w.Step(System.Array.Empty<Command>());
+        Assert.NotNull(w.GetUnit(enemy)); // enemy alive — passive patrol never engaged
+
+        // Switch to AutoAttack mid-patrol — re-derive must set IsAttackMoving=true.
+        w.Step(new Command[] { new SetStanceCommand(0, new[] { id }, Stance.AutoAttack) });
+        Assert.True(w.GetUnit(id)!.IsAttackMoving, "AutoAttack patrol must set IsAttackMoving");
+        Assert.True(w.GetUnit(id)!.IsPatrolling, "patrol must still be active after stance switch");
+
+        // Run another 80 ticks: patroller should now engage and kill the enemy.
+        for (int i = 0; i < 80; i++) w.Step(System.Array.Empty<Command>());
+        Assert.Null(w.GetUnit(enemy)); // enemy killed — AutoAttack patrol engaged
     }
 }

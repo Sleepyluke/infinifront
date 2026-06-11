@@ -44,11 +44,16 @@ public sealed partial class SimWorld
                     var (rdx, rdy) = Map.WorldToCell(u.AttackMoveDest);
                     var (ccx, ccy) = Map.WorldToCell(u.Position);
                     // "Arrived" for patrol swap: exact position match OR move order was cleared
-                    // (arrival-relaxation from a body-blocked endpoint) while within Chebyshev 1
+                    // (arrival-relaxation from a body-blocked endpoint) while within Chebyshev 2
                     // of the destination cell.
+                    // Bound is 2, not 1: ShouldRelaxArrival Rule B can clear the move order when
+                    // the unit is one step behind a stationary blocker that is itself Chebyshev 1
+                    // of the target — putting the patroller at Chebyshev 2 of the target cell.
+                    // Using ≤ 1 here caused a livelock: UpdateCombat re-issued the march every
+                    // tick and MoveUnits immediately re-cleared it (Rule B fired again), forever.
                     bool exactArrival = u.Position.Equals(u.AttackMoveDest);
                     bool relaxedArrival = !u.HasMoveOrder &&
-                        System.Math.Abs(ccx - rdx) <= 1 && System.Math.Abs(ccy - rdy) <= 1;
+                        System.Math.Abs(ccx - rdx) <= 2 && System.Math.Abs(ccy - rdy) <= 2;
                     bool arrivedAtDest = exactArrival || relaxedArrival;
 
                     if (arrivedAtDest && u.IsPatrolling)
