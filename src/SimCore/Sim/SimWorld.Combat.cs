@@ -104,9 +104,10 @@ public sealed partial class SimWorld
             }
             else
             {
-                // chase: follow a (cached) field toward the target's current cell.
-                // Building targets: the footprint cell is impassable, so the field is empty
-                // until Task 7 adds approach seeding — acceptable for stationary in-range attacks.
+                // chase: follow a (cached) flow field toward the target's current cell.
+                // Building targets: the footprint is impassable, so the field is seeded
+                // from the nearest passable neighbours of the building's footprint (approach
+                // seeding, implemented in plan 2b) — the unit chases to the footprint edge.
                 var (tx, ty) = Map.WorldToCell(targetPos);
                 u.HasMoveOrder = true;
                 u.MoveTarget = targetPos;
