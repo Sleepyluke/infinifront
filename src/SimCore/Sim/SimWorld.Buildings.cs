@@ -59,10 +59,10 @@ public sealed partial class SimWorld
         {
             if (!b.IsComplete || b.Queue.Count == 0) continue;
             var item = b.Queue[0];
-            item.RemainingTicks--;
+            if (item.RemainingTicks > 0) item.RemainingTicks--;
             if (item.RemainingTicks > 0) continue;
             var cell = FindSpawnCell(b);
-            if (cell is null) continue; // perimeter blocked — retry next tick
+            if (cell is null) continue; // perimeter blocked — retry next tick (ticks stay clamped at 0)
             b.Queue.RemoveAt(0);
             // supply was reserved at enqueue; SpawnUnit adds it again, so subtract the duplicate
             SpawnUnit(b.OwnerId, Map.CellCenter(cell.Value.x, cell.Value.y), item.Spec);
@@ -91,6 +91,12 @@ public sealed partial class SimWorld
             var b = _buildings[i];
             if (b.Hp > 0) continue;
             if (b.IsComplete) _players[b.OwnerId].SupplyCap -= b.Spec.SupplyProvided;
+            // Release supply reserved by queued (never-spawned) units and refund their minerals.
+            foreach (var item in b.Queue)
+            {
+                _players[b.OwnerId].SupplyUsed -= item.Spec.SupplyCost;
+                _players[b.OwnerId].Minerals += item.Spec.MineralCost;
+            }
             for (int y = b.CellY; y < b.CellY + b.Spec.Height; y++)
                 for (int x = b.CellX; x < b.CellX + b.Spec.Width; x++)
                     Map.SetPassable(x, y, true);

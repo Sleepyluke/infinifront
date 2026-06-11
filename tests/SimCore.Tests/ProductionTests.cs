@@ -79,4 +79,40 @@ public class ProductionTests
         w.Step(new Command[] { new TrainCommand(0, bid, Marine) });
         Assert.Empty(w.GetBuilding(bid)!.Queue);
     }
+
+    [Fact]
+    public void Blocked_Perimeter_Delays_Spawn_Until_Unblocked()
+    {
+        var (w, bid) = ReadyWorld();
+        var b = w.GetBuilding(bid)!;
+        // wall the entire perimeter
+        for (int y = b.CellY - 1; y <= b.CellY + 2; y++)
+            for (int x = b.CellX - 1; x <= b.CellX + 2; x++)
+                if (w.Map.IsPassable(x, y)) w.Map.SetPassable(x, y, false);
+
+        var unitsBefore = w.Units.Count;
+        w.Step(new Command[] { new TrainCommand(0, bid, Marine) });
+        for (int i = 0; i < Marine.BuildTimeTicks + 5; i++) w.Step(System.Array.Empty<Command>());
+        Assert.Equal(unitsBefore, w.Units.Count);              // blocked — nothing spawned
+        Assert.Single(w.GetBuilding(bid)!.Queue);              // still queued
+
+        w.Map.SetPassable(b.CellX - 1, b.CellY - 1, true);     // open one perimeter cell
+        w.Step(System.Array.Empty<Command>());
+        Assert.Equal(unitsBefore + 1, w.Units.Count);          // spawns immediately
+        Assert.Empty(w.GetBuilding(bid)!.Queue);
+    }
+
+    [Fact]
+    public void Destroyed_Building_Releases_Queue_Reservations()
+    {
+        var (w, bid) = ReadyWorld();
+        w.Step(new Command[] { new TrainCommand(0, bid, Marine), new TrainCommand(0, bid, Marine) });
+        Assert.Equal(2, w.Players[0].SupplyUsed);
+        var mineralsAfterEnqueue = w.Players[0].Minerals;
+
+        w.GetBuilding(bid)!.Hp = 0;
+        w.Step(System.Array.Empty<Command>());
+        Assert.Equal(0, w.Players[0].SupplyUsed);                       // reservations released
+        Assert.Equal(mineralsAfterEnqueue + 100, w.Players[0].Minerals); // 2 x 50 refunded
+    }
 }

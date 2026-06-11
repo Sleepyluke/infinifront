@@ -12,6 +12,8 @@ public sealed class Building
     public bool IsComplete { get; set; }
     public int BuildProgress { get; set; }
     public System.Collections.Generic.List<TrainingItem> Queue { get; } = new(); // index 0 is in production
+
+    public const int MaxQueueLength = 5;
 }
 
 public sealed class TrainingItem

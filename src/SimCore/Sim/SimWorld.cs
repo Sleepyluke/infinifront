@@ -148,7 +148,7 @@ public sealed partial class SimWorld
             case TrainCommand tc:
                 var trainer = GetBuilding(tc.BuildingId);
                 if (trainer is null || trainer.OwnerId != tc.PlayerId || !trainer.IsComplete || !trainer.Spec.CanTrain) break;
-                if (trainer.Queue.Count >= 5) break;
+                if (trainer.Queue.Count >= Building.MaxQueueLength) break;
                 var ps = _players[tc.PlayerId];
                 if (ps.Minerals < tc.Spec.MineralCost) break;
                 if (ps.SupplyUsed + tc.Spec.SupplyCost > ps.SupplyCap) break;
