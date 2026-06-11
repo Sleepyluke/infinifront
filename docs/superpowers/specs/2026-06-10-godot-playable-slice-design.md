@@ -78,6 +78,7 @@ llm-rts/
 | `CommandController` | context right-click, A-move, build-ghost placement → Command objects |
 | `CameraRig` | WASD/edge pan, stepped zoom, pixel snap |
 | `Hud` | minerals/supply, selection panel, build/train buttons, queue display |
+| `Minimap` | bottom-left overview: terrain, entity dots, camera rect, click-to-jump (added by user request) |
 | `TestMap` | hardcoded 40×40 map: terrain tiles, rock walls, mineral lines, two start bases |
 
 ## Controls & HUD
