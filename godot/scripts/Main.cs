@@ -22,6 +22,8 @@ public partial class Main : Node2D
         viewSync.Init(Runner);
         View = viewSync;
 
+        AddChild(new CameraRig { Name = "Camera" });
+
         GD.Print($"LlmRts boot OK units={Runner.World.Units.Count} buildings={Runner.World.Buildings.Count}");
     }
 }
