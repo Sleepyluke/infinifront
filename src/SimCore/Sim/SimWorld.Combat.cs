@@ -41,20 +41,56 @@ public sealed partial class SimWorld
                 }
                 else if (!u.HasMoveOrder || !u.MoveTarget.Equals(u.AttackMoveDest))
                 {
-                    if (u.Position.Equals(u.AttackMoveDest))
+                    var (rdx, rdy) = Map.WorldToCell(u.AttackMoveDest);
+                    var (ccx, ccy) = Map.WorldToCell(u.Position);
+                    // "Arrived" for patrol swap: exact position match OR move order was cleared
+                    // (arrival-relaxation from a body-blocked endpoint) while within Chebyshev 1
+                    // of the destination cell.
+                    bool exactArrival = u.Position.Equals(u.AttackMoveDest);
+                    bool relaxedArrival = !u.HasMoveOrder &&
+                        System.Math.Abs(ccx - rdx) <= 1 && System.Math.Abs(ccy - rdy) <= 1;
+                    bool arrivedAtDest = exactArrival || relaxedArrival;
+
+                    if (arrivedAtDest && u.IsPatrolling)
                     {
-                        u.IsAttackMoving = false; // arrived
+                        // Patrol leg swap: flip A↔B, march to new B, keep IsAttackMoving.
+                        (u.PatrolA, u.PatrolB) = (u.PatrolB, u.PatrolA);
+                        u.AttackMoveDest = u.PatrolB;
+                        var (ndx, ndy) = Map.WorldToCell(u.PatrolB);
+                        var nf = GetField(ndx, ndy);
+                        u.HasMoveOrder = true;
+                        u.MoveTarget = u.PatrolB;
+                        u.Path = nf;
+                        u.PathVersion = Map.Version;
+                        // IsAttackMoving stays true
+                    }
+                    else if (arrivedAtDest)
+                    {
+                        u.IsAttackMoving = false; // arrived at non-patrol attack-move dest
                     }
                     else
                     {
                         // resume march toward original destination
-                        var (rdx, rdy) = Map.WorldToCell(u.AttackMoveDest);
                         var f = GetField(rdx, rdy);
-                        var (ccx, ccy) = Map.WorldToCell(u.Position);
                         var inDestCell = ccx == rdx && ccy == rdy;
                         if (!inDestCell && f.DirectionAt(ccx, ccy) == (0, 0))
                         {
-                            u.IsAttackMoving = false; // destination unreachable — give up
+                            if (u.IsPatrolling)
+                            {
+                                // Destination unreachable — still swap legs so the patroller
+                                // doesn't stall forever against an impassable endpoint.
+                                (u.PatrolA, u.PatrolB) = (u.PatrolB, u.PatrolA);
+                                u.AttackMoveDest = u.PatrolB;
+                                var (ndx2, ndy2) = Map.WorldToCell(u.PatrolB);
+                                u.HasMoveOrder = true;
+                                u.MoveTarget = u.PatrolB;
+                                u.Path = GetField(ndx2, ndy2);
+                                u.PathVersion = Map.Version;
+                            }
+                            else
+                            {
+                                u.IsAttackMoving = false; // destination unreachable — give up
+                            }
                         }
                         else
                         {

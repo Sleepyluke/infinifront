@@ -18,3 +18,5 @@ public sealed record TrainCommand(int PlayerId, int BuildingId, UnitSpec Spec) :
 public sealed record HarvestCommand(int PlayerId, int[] UnitIds, int NodeId) : Command(PlayerId);
 
 public sealed record SetStanceCommand(int PlayerId, int[] UnitIds, Stance Stance) : Command(PlayerId);
+
+public sealed record PatrolCommand(int PlayerId, int[] UnitIds, FixVec Target) : Command(PlayerId);

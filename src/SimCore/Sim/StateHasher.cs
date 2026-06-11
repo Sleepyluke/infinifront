@@ -65,6 +65,11 @@ public static class StateHasher
             h = Mix(h, u.HasAnchor ? 1UL : 0UL);
             h = Mix(h, (ulong)u.Anchor.X.Raw);
             h = Mix(h, (ulong)u.Anchor.Y.Raw);
+            h = Mix(h, u.IsPatrolling ? 1UL : 0UL);
+            h = Mix(h, (ulong)u.PatrolA.X.Raw);
+            h = Mix(h, (ulong)u.PatrolA.Y.Raw);
+            h = Mix(h, (ulong)u.PatrolB.X.Raw);
+            h = Mix(h, (ulong)u.PatrolB.Y.Raw);
         }
 
         foreach (var p in world.Players)

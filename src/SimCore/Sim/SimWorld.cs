@@ -110,6 +110,7 @@ public sealed partial class SimWorld
                     var u = GetUnit(id);
                     if (u is null || u.OwnerId != mv.PlayerId) continue;
                     u.IsAttackMoving = false;
+                    u.IsPatrolling = false;
                     u.AttackTargetId = 0;
                     u.HasAnchor = false;
                     u.HarvestPhase = HarvestPhase.None;
@@ -138,6 +139,7 @@ public sealed partial class SimWorld
                     }
                     u.AttackTargetId = atk.TargetId;
                     u.IsAttackMoving = false; // explicit attack order replaces any attack-move
+                    u.IsPatrolling = false;
                     u.HasAnchor = false;
                     u.HasMoveOrder = false;
                     u.Path = null;
@@ -151,6 +153,7 @@ public sealed partial class SimWorld
                     var u = GetUnit(id);
                     if (u is null || u.OwnerId != am.PlayerId) continue;
                     u.IsAttackMoving = u.Weapon is not null; // weaponless units treat this as a plain move
+                    u.IsPatrolling = false;
                     u.AttackMoveDest = am.Target;
                     u.AttackTargetId = 0;
                     u.HasAnchor = false;
@@ -191,6 +194,7 @@ public sealed partial class SimWorld
                     u.HarvestNodeId = hc.NodeId;
                     u.AttackTargetId = 0;
                     u.IsAttackMoving = false;
+                    u.IsPatrolling = false;
                     u.HasAnchor = false;
                     u.HasMoveOrder = false; // UpdateHarvest issues the approach
                     u.Path = null;
@@ -216,6 +220,31 @@ public sealed partial class SimWorld
                         u.HasMoveOrder = false;
                         u.Path = null;
                     }
+                    // SetStance does NOT cancel an active patrol — the unit keeps looping, just
+                    // with the new stance applied (e.g. switching to Passive stops engaging).
+                }
+                break;
+            case PatrolCommand pc:
+                var (pax, pay) = Map.WorldToCell(pc.Target);
+                var patrolField = GetField(pax, pay);
+                foreach (var id in pc.UnitIds)
+                {
+                    var u = GetUnit(id);
+                    if (u is null || u.OwnerId != pc.PlayerId) continue;
+                    u.PatrolA = u.Position;  // current position is leg A
+                    u.PatrolB = pc.Target;   // target is leg B
+                    u.IsPatrolling = true;
+                    // Armed non-passive patrol uses attack-move so the unit engages enemies en route.
+                    // Passive or weaponless patrol is a plain looping move.
+                    u.IsAttackMoving = u.Weapon is not null && u.Stance != Stance.Passive;
+                    u.AttackMoveDest = pc.Target;
+                    u.AttackTargetId = 0;
+                    u.HasAnchor = false;
+                    u.HarvestPhase = HarvestPhase.None;
+                    u.HasMoveOrder = true;
+                    u.MoveTarget = pc.Target;
+                    u.Path = patrolField;
+                    u.PathVersion = Map.Version;
                 }
                 break;
         }
@@ -224,6 +253,22 @@ public sealed partial class SimWorld
     // Per-tick set of unit ids that have already been moved by a head-on swap this tick.
     // Using a HashSet populated in spawn order (unit list iteration) — deterministic.
     private readonly System.Collections.Generic.HashSet<int> _swappedThisTick = new();
+
+    /// <summary>For passive/weaponless patrollers (IsPatrolling &amp;&amp; !IsAttackMoving): when the
+    /// move order is cleared (arrival or arrival-relaxation from a blocked endpoint), swap legs
+    /// and issue the next leg. This mirrors the leg-swap done for armed patrollers in
+    /// UpdateCombat's attack-move arrival branch.</summary>
+    private void TryPassivePatrolSwap(Unit u)
+    {
+        if (!u.IsPatrolling || u.IsAttackMoving) return;
+        // Swap legs and issue the next leg.
+        (u.PatrolA, u.PatrolB) = (u.PatrolB, u.PatrolA);
+        var (ndx, ndy) = Map.WorldToCell(u.PatrolB);
+        u.HasMoveOrder = true;
+        u.MoveTarget = u.PatrolB;
+        u.Path = GetField(ndx, ndy);
+        u.PathVersion = Map.Version;
+    }
 
     private void MoveUnits()
     {
@@ -252,7 +297,13 @@ public sealed partial class SimWorld
                     u.PathVersion = Map.Version;
                 }
                 var (dx, dy) = u.Path.DirectionAt(cx, cy);
-                if (dx == 0 && dy == 0) { u.HasMoveOrder = false; u.Path = null; continue; } // unreachable
+                if (dx == 0 && dy == 0)
+                {
+                    u.HasMoveOrder = false;
+                    u.Path = null;
+                    TryPassivePatrolSwap(u); // unreachable endpoint — swap to other leg
+                    continue;
+                }
                 step = Map.CellCenter(cx + dx, cy + dy) - u.Position;
             }
 
@@ -285,6 +336,7 @@ public sealed partial class SimWorld
                     {
                         u.HasMoveOrder = false;
                         u.Path = null;
+                        TryPassivePatrolSwap(u); // blocked endpoint — swap to other leg
                     }
                     // Either way: hold position this tick (don't move into the occupied cell).
                     continue;
@@ -298,6 +350,7 @@ public sealed partial class SimWorld
             {
                 u.HasMoveOrder = false;
                 u.Path = null;
+                TryPassivePatrolSwap(u); // normal arrival — swap to other leg
             }
         }
     }
@@ -337,12 +390,12 @@ public sealed partial class SimWorld
         // Check arrival for u after the swap
         var (ancx, ancy) = Map.WorldToCell(u.Position);
         var (attx, atty) = Map.WorldToCell(u.MoveTarget);
-        if (ancx == attx && ancy == atty) { u.HasMoveOrder = false; u.Path = null; }
+        if (ancx == attx && ancy == atty) { u.HasMoveOrder = false; u.Path = null; TryPassivePatrolSwap(u); }
 
         // Check arrival for blocker after the swap
         var (bncx, bncy) = Map.WorldToCell(blocker.Position);
         var (bttx, btty) = Map.WorldToCell(blocker.MoveTarget);
-        if (bncx == bttx && bncy == btty) { blocker.HasMoveOrder = false; blocker.Path = null; }
+        if (bncx == bttx && bncy == btty) { blocker.HasMoveOrder = false; blocker.Path = null; TryPassivePatrolSwap(blocker); }
 
         return true;
     }

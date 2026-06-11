@@ -34,6 +34,10 @@ public sealed class Unit
 
     public bool HasAnchor { get; set; }
     public FixVec Anchor { get; set; }
+
+    public bool IsPatrolling { get; set; }
+    public FixVec PatrolA { get; set; }
+    public FixVec PatrolB { get; set; }
 }
 
 public enum HarvestPhase : byte { None = 0, MovingToNode = 1, Gathering = 2, Returning = 3 }
