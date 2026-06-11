@@ -8,6 +8,8 @@ public partial class Main : Node2D
     public ViewSync View { get; private set; } = null!;
     public SelectionController Selection { get; private set; } = null!;
     public CommandController Commands { get; private set; } = null!;
+    private FogView _fogView = null!;
+    private Minimap _minimap = null!;
 
     public override void _Ready()
     {
@@ -32,6 +34,11 @@ public partial class Main : Node2D
         Selection.Init(viewSync, Runner);
         Runner.Ticked += Selection.PruneDead;
 
+        // Wire controlled-player provider into ViewSync now that Selection exists.
+        viewSync.ControlledPlayerProvider = () => Selection.ControlledPlayer;
+        // Also refresh entity visibility on player switch.
+        Selection.PlayerSwitched += viewSync.ForceSync;
+
         // Order matters: Commands added AFTER Selection so it appears later in the tree.
         // Godot processes _UnhandledInput in REVERSE tree order (later siblings first),
         // so CommandController sees input before SelectionController. It consumes
@@ -41,14 +48,31 @@ public partial class Main : Node2D
         AddChild(Commands);
         Commands.Init(Runner, Selection, viewSync);
 
+        // FogView sits above the world but below the HUD (which is a CanvasLayer).
+        _fogView = new FogView { Name = "FogView" };
+        AddChild(_fogView);
+        _fogView.Init(Runner, Selection);
+
         var hud = new Hud { Name = "Hud" };
         AddChild(hud);
         hud.Init(Runner, Selection, Commands);
 
-        var minimap = new Minimap { Name = "Minimap" };
-        hud.AddChild(minimap);
-        minimap.Init(Runner, camera);
+        _minimap = new Minimap { Name = "Minimap" };
+        hud.AddChild(_minimap);
+        _minimap.Init(Runner, camera, Selection);
 
         GD.Print($"LlmRts boot OK units={Runner.World.Units.Count} buildings={Runner.World.Buildings.Count}");
+    }
+
+    public override void _UnhandledKeyInput(InputEvent e)
+    {
+        if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F3 })
+        {
+            Runner.World.FogEnabled = !Runner.World.FogEnabled;
+            // Force immediate visual refresh; FogView._Process detects the flag change
+            // and queues its own redraw, but QueueRedraw here keeps minimap in sync too.
+            _minimap.QueueRedraw();
+            GetViewport().SetInputAsHandled();
+        }
     }
 }

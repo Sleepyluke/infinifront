@@ -21,6 +21,7 @@ Requires Godot 4.6 .NET (the winget install, NOT the Steam build — Steam's has
 | WASD / arrows / screen edge | pan camera |
 | Mouse wheel | zoom steps |
 | Space | pause sim (orders still queue) |
+| F3 | toggle fog of war (debug) |
 | Minimap click/drag | jump camera |
 
 ## Architecture

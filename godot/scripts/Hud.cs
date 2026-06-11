@@ -53,8 +53,9 @@ public partial class Hud : CanvasLayer
     public override void _Process(double delta)
     {
         var p = _runner.World.Players[_sel.ControlledPlayer];
+        var fogTag = _runner.World.FogEnabled ? "" : "   [FOG OFF]";
         _resources.Text = $"Minerals {p.Minerals}   Supply {p.SupplyUsed}/{p.SupplyCap}" +
-                          (_runner.Paused ? "   [PAUSED]" : "");
+                          (_runner.Paused ? "   [PAUSED]" : "") + fogTag;
         _playerBadge.Text = $"Commanding: Player {_sel.ControlledPlayer + 1}";
         _playerBadge.Modulate = UnitView.PlayerColors[_sel.ControlledPlayer];
         UpdateSelectionInfo();

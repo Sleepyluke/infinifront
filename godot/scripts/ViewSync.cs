@@ -13,6 +13,10 @@ public partial class ViewSync : Node2D
     private readonly Dictionary<int, BuildingView> _buildings = new();
     private readonly Dictionary<int, NodeView> _nodes = new();
 
+    /// <summary>Provider for the currently controlled player index. Set by Main after
+    /// both ViewSync and SelectionController exist; defaults to player 0.</summary>
+    public System.Func<int> ControlledPlayerProvider { get; set; } = () => 0;
+
     public IReadOnlyDictionary<int, UnitView> Units => _units;
     public IReadOnlyDictionary<int, BuildingView> Buildings => _buildings;
 
@@ -33,9 +37,13 @@ public partial class ViewSync : Node2D
         OnTick(); // initial population
     }
 
+    /// <summary>Re-applies visibility without a full diff (called on player switch).</summary>
+    public void ForceSync() => OnTick();
+
     private void OnTick()
     {
         var w = _runner.World;
+        int controlled = ControlledPlayerProvider();
 
         var live = new HashSet<int>();
         foreach (var u in w.Units)
@@ -49,6 +57,9 @@ public partial class ViewSync : Node2D
                 _units[u.Id] = v;
             }
             v.SyncTick(u);
+            // Hide enemy units in fogged cells; own units always visible.
+            var (ucx, ucy) = w.Map.WorldToCell(u.Position);
+            v.Visible = u.OwnerId == controlled || w.IsVisibleTo(controlled, ucx, ucy);
             if (u.AttackTargetId != 0)
             {
                 var tu = w.GetUnit(u.AttackTargetId);
@@ -75,6 +86,9 @@ public partial class ViewSync : Node2D
                 _buildings[b.Id] = v;
             }
             v.SyncTick(b);
+            // Own buildings always visible; enemy buildings visible when explored
+            // (buildings don't move, so explored memory is correct — acceptable simplification).
+            v.Visible = b.OwnerId == controlled || w.IsExploredBy(controlled, b.CellX, b.CellY);
         }
         foreach (var id in _buildings.Keys.Where(id => !liveB.Contains(id)).ToList())
         {
