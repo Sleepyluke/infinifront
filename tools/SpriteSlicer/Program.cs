@@ -30,6 +30,10 @@ foreach (var sidecarPath in args)
         throw new InvalidDataException($"{sidecarPath}: baselinePx {sc.BaselinePx} out of range [0, {Cell - 3}]");
 
     using var raw = Image.Load<Rgba32>(sc.Source);
+    var iconRect = new Rectangle(sc.Icon.X, sc.Icon.Y, sc.Icon.W, sc.Icon.H);
+    if (iconRect.X < 0 || iconRect.Y < 0 || iconRect.Right > raw.Width || iconRect.Bottom > raw.Height)
+        throw new InvalidDataException($"{sidecarPath}: icon rect {iconRect} outside {raw.Width}x{raw.Height}");
+
     using var sheet = new Image<Rgba32>(SheetW, contract.Length * Cell);
 
     for (int r = 0; r < contract.Length; r++)
@@ -58,7 +62,7 @@ foreach (var sidecarPath in args)
     Directory.CreateDirectory(Path.GetDirectoryName(sc.Output)!);
     sheet.SaveAsPng(sc.Output);
 
-    using var icon = raw.Clone(c => c.Crop(new Rectangle(sc.Icon.X, sc.Icon.Y, sc.Icon.W, sc.Icon.H)));
+    using var icon = raw.Clone(c => c.Crop(iconRect));
     Slicer.ChromaKey(icon);
     icon.Mutate(c => c.Resize(64, 64, KnownResamplers.NearestNeighbor));
     Directory.CreateDirectory(Path.GetDirectoryName(sc.IconOutput)!);
