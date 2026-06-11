@@ -16,6 +16,7 @@ public partial class UnitView : Node2D
     private Vector2 _prevPos, _currPos;
     private int _maxHp = 1, _hp = 1;
     private bool _attacking;
+    private bool _dying;
 
     public static readonly Color[] PlayerColors = { new(0.2f, 0.45f, 1f), new(1f, 0.35f, 0.25f) };
 
@@ -76,6 +77,9 @@ public partial class UnitView : Node2D
     /// <summary>Detached corpse: plays death-S once, then frees.</summary>
     public void PlayDeathAndFree()
     {
+        _prevPos = _currPos;
+        Selected = false;
+        _dying = true;
         if (_sprite is null) { QueueFree(); return; }
         _sprite.FlipH = false;
         _sprite.Play("death-S");
@@ -94,6 +98,7 @@ public partial class UnitView : Node2D
         {
             DrawCircle(Vector2.Zero, 20, _fallbackColor);
         }
+        if (_dying) return;
         if (Selected)
             DrawArc(new Vector2(0, 18), 22, 0, Mathf.Tau, 32, Colors.Lime, 2);
         if (_hp < _maxHp && _hp > 0)
