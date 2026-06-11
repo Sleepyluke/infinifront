@@ -11,7 +11,10 @@ public static class StateHasher
     /// from hashed state (MoveTarget + map).
     /// Other documented exclusions: SimWorld._fieldCache/_fieldCacheVersion (derived,
     /// version-guarded); SimWorld._swappedThisTick (transient per-tick scratch set, cleared
-    /// at the top of MoveUnits before any state is read — zero net effect on observable state).
+    /// at the top of MoveUnits before any state is read — zero net effect on observable state);
+    /// SimWorld._occupancy (derived from unit positions — recomputed each tick, excluded as a cache);
+    /// SimWorld._visible/_explored (derived from unit/building positions+specs every tick — excluded);
+    /// SimWorld.FogEnabled (debug-only toggle; never toggled mid-match in any lockstep context).
     /// MapGrid passability IS hashed (mutable mid-run since buildings
     /// and node depletion), packed 64 cells per Mix, along with Map.Version.
     /// Patterns for new state: nullable objects need a presence marker before their
@@ -57,6 +60,7 @@ public static class StateHasher
                 h = Mix(h, (ulong)hv.CarryCapacity);
                 h = Mix(h, (ulong)hv.GatherTicks);
             }
+            h = Mix(h, (ulong)u.SightRange);
         }
 
         foreach (var p in world.Players)

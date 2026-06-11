@@ -22,6 +22,7 @@ public sealed class Unit
     public FixVec AttackMoveDest { get; set; }
 
     public int SupplyCost { get; set; }
+    public int SightRange { get; set; }
     public HarvesterSpec? Harvester { get; set; }
 
     public HarvestPhase HarvestPhase { get; set; }
