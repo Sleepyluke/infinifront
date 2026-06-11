@@ -224,7 +224,21 @@ public sealed partial class SimWorld
                     // For patrolling units, re-derive IsAttackMoving from the new stance so the
                     // engage mode matches immediately (e.g. Passive → stop engaging; AutoAttack → resume).
                     if (u.IsPatrolling)
+                    {
                         u.IsAttackMoving = u.Weapon is not null && ss.Stance != Stance.Passive;
+                        // If switching to Passive and the patroller has an active combat target,
+                        // stand it down and re-issue the current patrol leg (PatrolB) so it
+                        // doesn't strand mid-fight with no move order. Mirrors TryPassivePatrolSwap.
+                        if (ss.Stance == Stance.Passive && u.AttackTargetId != 0)
+                        {
+                            u.AttackTargetId = 0;
+                            var (pdx, pdy) = Map.WorldToCell(u.PatrolB);
+                            u.HasMoveOrder = true;
+                            u.MoveTarget = u.PatrolB;
+                            u.Path = GetField(pdx, pdy);
+                            u.PathVersion = Map.Version;
+                        }
+                    }
                 }
                 break;
             case PatrolCommand pc:

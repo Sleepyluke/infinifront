@@ -22,7 +22,7 @@ public partial class CommandController : Node2D
         _runner = runner; _sel = sel; _view = view;
     }
 
-    public void ArmBuildGhost(BuildingSpec spec) { _ghostSpec = spec; QueueRedraw(); }
+    public void ArmBuildGhost(BuildingSpec spec) { _attackMoveArmed = false; _patrolArmed = false; _ghostSpec = spec; QueueRedraw(); }
 
     public override void _UnhandledInput(InputEvent e)
     {
@@ -30,9 +30,11 @@ public partial class CommandController : Node2D
         {
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.A } when _ghostSpec is null && _sel.SelectedUnits.Count > 0:
                 _attackMoveArmed = true;
+                _patrolArmed = false;
                 break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.P } when _ghostSpec is null && _sel.SelectedUnits.Count > 0:
                 _patrolArmed = true;
+                _attackMoveArmed = false;
                 break;
             case InputEventKey { Pressed: true, Keycode: Key.Escape }:
                 _attackMoveArmed = false;

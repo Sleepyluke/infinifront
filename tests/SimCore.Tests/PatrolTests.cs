@@ -119,6 +119,53 @@ public class PatrolTests
     }
 
     [Fact]
+    public void SetStance_Passive_MidFight_PatrollerStandsDownAndResumesLoop()
+    {
+        // Reviewer repro: armed patroller engages an enemy en route, SetStance(Passive) mid-fight,
+        // asserts: target cleared, enemy survives, patroller resumes the patrol loop.
+        // Without the fix: IsAttackMoving is cleared but AttackTargetId stays set, so UpdateCombat
+        // never re-issues the move order; the patroller idles indefinitely and kills the enemy.
+        //
+        // Enemy is placed one cell OFF the patrol axis (at (8,6)) so it doesn't permanently block
+        // the passive patroller's path after stand-down. It is within weapon range (3 cells) of
+        // the patroller at (6,5) — distance ≈ sqrt(4+1) < 3 — so acquisition fires.
+        var w = new SimWorld(new MapGrid(30, 30), seed: 1);
+        var id = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 50, Gun());
+        // Enemy with moderate HP near but off the patrol axis — within range but doesn't block path.
+        var enemy = w.SpawnUnit(1, w.Map.CellCenter(8, 6), Fix.FromFraction(0, 1), 30);
+
+        // Issue patrol A=(5,5) → B=(15,5).
+        w.Step(new Command[] { new PatrolCommand(0, new[] { id }, w.Map.CellCenter(15, 5)) });
+
+        // Advance 2 ticks so the patroller moves toward B and acquires the enemy.
+        w.Step(System.Array.Empty<Command>());
+        w.Step(System.Array.Empty<Command>());
+
+        // SetStance to Passive mid-fight.
+        w.Step(new Command[] { new SetStanceCommand(0, new[] { id }, Stance.Passive) });
+
+        // Target must be cleared immediately.
+        Assert.Equal(0, w.GetUnit(id)!.AttackTargetId);
+
+        // Enemy must survive (Passive patroller does not attack).
+        Assert.NotNull(w.GetUnit(enemy));
+
+        // Run until the patroller has looped: it must reach both endpoints within the budget.
+        bool reachedB = false, returnedA = false;
+        for (int i = 0; i < 400; i++)
+        {
+            w.Step(System.Array.Empty<Command>());
+            var (cx, _) = w.Map.WorldToCell(w.GetUnit(id)!.Position);
+            if (cx >= 13) reachedB = true;
+            if (reachedB && cx <= 7) { returnedA = true; break; }
+        }
+        Assert.True(reachedB, "patroller never resumed march toward B after Passive stand-down");
+        Assert.True(returnedA, "patroller never returned toward A — patrol loop broken");
+        Assert.True(w.GetUnit(id)!.IsPatrolling, "patrol must still be active");
+        Assert.NotNull(w.GetUnit(enemy)); // enemy survived the entire run
+    }
+
+    [Fact]
     public void SetStance_Passive_MidPatrol_Stops_Acquiring_And_AutoAttack_Resumes()
     {
         // An armed patroller switched to Passive mid-patrol must stop engaging enemies.

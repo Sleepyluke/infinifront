@@ -113,7 +113,7 @@ public partial class UnitView : Node2D
         }
 
         // Patrol glyph: small cyan double-triangle above the unit when patrolling.
-        if (_isPatrolling && (Selected || true))
+        if (_isPatrolling && Selected)
         {
             // Two small arrow triangles pointing left and right, side by side above unit.
             var top = new Vector2(0, -46);
