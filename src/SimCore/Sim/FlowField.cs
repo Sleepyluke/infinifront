@@ -37,12 +37,29 @@ public sealed class FlowField
     public static FlowField Compute(MapGrid map, int targetX, int targetY)
     {
         var f = new FlowField(map.Width, map.Height, targetX, targetY);
-        if (!map.IsPassable(targetX, targetY)) return f;
+        var queue = new Queue<(int x, int y)>();
+
+        if (map.IsPassable(targetX, targetY))
+        {
+            f._cost[targetY * map.Width + targetX] = 0;
+            queue.Enqueue((targetX, targetY));
+        }
+        else
+        {
+            // Approach semantics: impassable target (building/resource) — seed its passable
+            // neighbors at cost 0 so units walk up adjacent and stop there. Fixed neighbor
+            // order; no corner-cut constraint for seeds (they are start points, not steps).
+            foreach (var (dx, dy) in Neighbors)
+            {
+                int nx = targetX + dx, ny = targetY + dy;
+                if (!map.IsPassable(nx, ny)) continue;
+                f._cost[ny * map.Width + nx] = 0;
+                queue.Enqueue((nx, ny));
+            }
+        }
+        if (queue.Count == 0) return f; // fully enclosed — empty field, give-up semantics
 
         // BFS integration field
-        var queue = new Queue<(int x, int y)>();
-        f._cost[targetY * map.Width + targetX] = 0;
-        queue.Enqueue((targetX, targetY));
         while (queue.Count > 0)
         {
             var (cx, cy) = queue.Dequeue();
