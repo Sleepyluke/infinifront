@@ -108,6 +108,9 @@ public class OccupancyTests
         {
             var (cx, cy) = w.Map.WorldToCell(u.Position);
             Assert.Equal(u.Id, w.OccupantAt(cx, cy));
+            // bijective: the occupant at that cell is this unit, and this unit's position maps to that cell
+            var (ux, uy) = w.Map.WorldToCell(w.GetUnit(w.OccupantAt(cx, cy))!.Position);
+            Assert.Equal((cx, cy), (ux, uy));
         }
         // verify no cell is claimed by a dead unit
         for (int cy = 0; cy < w.Map.Height; cy++)
@@ -116,6 +119,46 @@ public class OccupancyTests
                 var occ = w.OccupantAt(cx, cy);
                 if (occ == 0) continue;
                 Assert.NotNull(w.GetUnit(occ)); // claimed cell must belong to a live unit
+                // reverse: the unit's position must map back to this cell (ownership is bijective)
+                var (ux, uy) = w.Map.WorldToCell(w.GetUnit(occ)!.Position);
+                Assert.Equal((cx, cy), (ux, uy));
             }
+    }
+
+    [Fact]
+    public void Group_Ordered_To_One_Point_Settles_On_Adjacent_Cells()
+    {
+        var w = new SimWorld(new MapGrid(12, 12), seed: 1);
+        var ids = new int[4];
+        for (int i = 0; i < 4; i++)
+            ids[i] = w.SpawnUnit(0, w.Map.CellCenter(2 + i, 2), Fix.FromFraction(1, 2), 50);
+        w.Step(new Command[] { new MoveCommand(0, ids, w.Map.CellCenter(6, 6)) });
+        for (int i = 0; i < 300; i++) w.Step(System.Array.Empty<Command>());
+        foreach (var id in ids)
+            Assert.False(w.GetUnit(id)!.HasMoveOrder, $"unit {id} never settled");
+        // all on distinct cells, all within chebyshev 2 of the target
+        var cells = ids.Select(id => w.Map.WorldToCell(w.GetUnit(id)!.Position)).ToHashSet();
+        Assert.Equal(4, cells.Count);
+        foreach (var (cx, cy) in cells)
+            Assert.True(System.Math.Abs(cx - 6) <= 2 && System.Math.Abs(cy - 6) <= 2, $"({cx},{cy}) too far");
+    }
+
+    [Fact]
+    public void HeadOn_Units_Swap_Instead_Of_Deadlocking()
+    {
+        var g = new MapGrid(8, 3);
+        for (int x = 0; x < 8; x++) { g.SetPassable(x, 0, false); g.SetPassable(x, 2, false); }
+        var w = new SimWorld(g, seed: 1);
+        var a = w.SpawnUnit(0, w.Map.CellCenter(1, 1), Fix.FromFraction(1, 2), 50);
+        var b = w.SpawnUnit(0, w.Map.CellCenter(5, 1), Fix.FromFraction(1, 2), 50);
+        w.Step(new Command[] {
+            new MoveCommand(0, new[] { a }, w.Map.CellCenter(6, 1)),
+            new MoveCommand(0, new[] { b }, w.Map.CellCenter(1, 1)),
+        });
+        for (int i = 0; i < 200; i++) w.Step(System.Array.Empty<Command>());
+        var (axc, _) = w.Map.WorldToCell(w.GetUnit(a)!.Position);
+        var (bxc, _) = w.Map.WorldToCell(w.GetUnit(b)!.Position);
+        Assert.True(axc >= 5, $"a deadlocked at x={axc}");
+        Assert.True(bxc <= 2, $"b deadlocked at x={bxc}");
     }
 }
