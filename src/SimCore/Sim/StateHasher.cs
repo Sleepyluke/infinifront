@@ -12,7 +12,7 @@ public static class StateHasher
     /// Other documented exclusions: SimWorld._fieldCache/_fieldCacheVersion (derived,
     /// version-guarded); SimWorld._swappedThisTick (transient per-tick scratch set, cleared
     /// at the top of MoveUnits before any state is read — zero net effect on observable state);
-    /// SimWorld._occupancy (derived from unit positions — recomputed each tick, excluded as a cache);
+    /// SimWorld._occupancy (derived from unit positions — incrementally maintained via claim/release, excluded as a cache);
     /// SimWorld._visible/_explored (derived from unit/building positions+specs every tick — excluded);
     /// SimWorld.FogEnabled (debug-only toggle; never toggled mid-match in any lockstep context).
     /// MapGrid passability IS hashed (mutable mid-run since buildings

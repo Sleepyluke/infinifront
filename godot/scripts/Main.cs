@@ -69,8 +69,11 @@ public partial class Main : Node2D
         if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F3 })
         {
             Runner.World.FogEnabled = !Runner.World.FogEnabled;
-            // Force immediate visual refresh; FogView._Process detects the flag change
-            // and queues its own redraw, but QueueRedraw here keeps minimap in sync too.
+            // Force immediate visual refresh of entity visibility;
+            // when paused, ViewSync.ForceSync re-applies Visible flags.
+            View.ForceSync();
+            // FogView._Process detects the flag change and queues its own redraw,
+            // but QueueRedraw here keeps minimap in sync too.
             _minimap.QueueRedraw();
             GetViewport().SetInputAsHandled();
         }
