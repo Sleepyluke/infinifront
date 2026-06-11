@@ -1091,3 +1091,15 @@ git commit -m "test: determinism scenario v2 with pitched battle (re-pin golden 
 - `grep -ri godot src/SimCore` → no hits; no float/double outside `Fix.ToString()`.
 
 **Next plan:** Economy, buildings & fog (plan 2b) — player resources, buildings with passability footprints (exercising Task 4's invalidation for real), production queues, supply, harvesting, and per-player vision maps.
+
+## Plan-2b Inputs (carried forward from code reviews — STATUS: COMPLETE, merged 2026-06-10, 72 tests)
+
+1. **Hash MapGrid passability** the moment build/destroy commands mutate it mid-run — day-one task, already tripwired in the StateHasher convention comment.
+2. **Weapon instance aliasing** — Weapon is a mutable class; one instance shared across SpawnUnit calls shares cooldown state. Unit-template/faction work must clone per spawn (or move cooldown onto Unit).
+3. **Fog vs omniscient combat** — AttackCommand accepts any enemy anywhere; chase reads target.Position with perfect information. Fog needs visibility gates at command application and during chase/acquisition.
+4. **Scale costs** — AcquireTarget is O(attackers × units)/tick; _fieldCache accumulates one field per distinct destination on a static map. Fine at tens of units; spatial index / eviction when counts grow.
+5. **SpawnUnit parameter growth** — (owner, pos, speed, hp, weapon?) won't scale to buildings/harvesters; introduce a spawn-spec/archetype record.
+6. **Command boundary validation thin** — PlayerId unvalidated, UnitIds assumed non-null; harden when network/CPU-opponent layers produce commands.
+7. **Leash/acquisition magic numbers** — acquisition = Range+2 and leash = Range+4 are hand-synced literals in SimWorld.Combat.cs; extract named constants on next touch. Also: explicit-attack chasers walk to a corpse's last position after a third-party kill (deterministic, undocumented); LengthSquared truncation undocumented at its definition.
+8. **(Inherited, → plan 4)** Mutable Unit exposure via Units/GetUnit.
+9. **Scenario nicety** — symmetric-exchange (mutual simultaneous damage) coverage dropped out of the golden trajectory in v2.1 (still pinned by its unit test); restore when the scenario next re-pins.
