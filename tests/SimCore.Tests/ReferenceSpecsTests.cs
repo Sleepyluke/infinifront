@@ -56,4 +56,20 @@ public class ReferenceSpecsTests
         foreach (var s in new[] { ReferenceSpecs.Trooper, ReferenceSpecs.Outrider, ReferenceSpecs.Tank })
             Assert.True(s.SupplyCost <= ReferenceSpecs.Depot.SupplyProvided);
     }
+
+    [Fact]
+    public void Everything_Has_Positive_Sight()
+    {
+        foreach (var s in new[] { ReferenceSpecs.Fabber, ReferenceSpecs.Trooper, ReferenceSpecs.Outrider, ReferenceSpecs.Tank })
+            Assert.True(s.SightRange > 0);
+        Assert.True(ReferenceSpecs.Depot.SightRange > 0);
+        Assert.True(ReferenceSpecs.Barracks.SightRange > 0);
+    }
+
+    [Fact]
+    public void Sight_Reaches_At_Least_Weapon_Range()
+    {
+        foreach (var s in new[] { ReferenceSpecs.Trooper, ReferenceSpecs.Outrider, ReferenceSpecs.Tank })
+            Assert.True(Fix.FromInt(s.SightRange) >= s.Weapon!.Range);
+    }
 }

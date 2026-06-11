@@ -14,8 +14,8 @@ public sealed record HarvesterSpec(int CarryCapacity, int GatherTicks);
 
 public sealed record UnitSpec(
     int MaxHp, Fix Speed, int MineralCost, int SupplyCost, int BuildTimeTicks,
-    WeaponSpec? Weapon = null, HarvesterSpec? Harvester = null);
+    WeaponSpec? Weapon = null, HarvesterSpec? Harvester = null, int SightRange = 7);
 
 public sealed record BuildingSpec(
     int MaxHp, int Width, int Height, int MineralCost, int BuildTimeTicks,
-    int SupplyProvided = 0, bool IsDepot = false, bool CanTrain = false);
+    int SupplyProvided = 0, bool IsDepot = false, bool CanTrain = false, int SightRange = 8);
