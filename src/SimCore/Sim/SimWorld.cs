@@ -111,8 +111,10 @@ public sealed partial class SimWorld
                 {
                     var u = GetUnit(id);
                     if (u is null || u.OwnerId != atk.PlayerId || u.Weapon is null) continue;
-                    var t = GetUnit(atk.TargetId);
-                    if (t is null || t.OwnerId == atk.PlayerId) continue;
+                    var tu = GetUnit(atk.TargetId);
+                    var tb = tu is null ? GetBuilding(atk.TargetId) : null;
+                    if (tu is null && tb is null) continue;
+                    if ((tu?.OwnerId ?? tb!.OwnerId) == atk.PlayerId) continue; // no friendly fire
                     u.AttackTargetId = atk.TargetId;
                     u.IsAttackMoving = false; // explicit attack order replaces any attack-move
                     u.HasMoveOrder = false;

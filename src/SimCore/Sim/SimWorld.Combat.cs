@@ -25,11 +25,8 @@ public sealed partial class SimWorld
         foreach (var u in _units)
         {
             // Clear dead/missing targets up front so re-acquisition happens this tick, not next.
-            if (u.AttackTargetId != 0)
-            {
-                var t0 = GetUnit(u.AttackTargetId);
-                if (t0 is null || t0.Hp <= 0) u.AttackTargetId = 0;
-            }
+            if (u.AttackTargetId != 0 && !TryResolveTarget(u.AttackTargetId, out _, out _, out _))
+                u.AttackTargetId = 0;
 
             // Attack-move: acquire a target, or resume/finish the march.
             if (u.IsAttackMoving && u.Weapon is not null && u.AttackTargetId == 0)
@@ -68,10 +65,13 @@ public sealed partial class SimWorld
             }
 
             if (u.Weapon is null || u.AttackTargetId == 0) continue;
-            var target = GetUnit(u.AttackTargetId);
-            if (target is null || target.Hp <= 0) { u.AttackTargetId = 0; continue; }
+            if (!TryResolveTarget(u.AttackTargetId, out var targetPos, out var targetUnit, out var targetBuilding))
+            {
+                u.AttackTargetId = 0;
+                continue;
+            }
 
-            var delta = target.Position - u.Position;
+            var delta = targetPos - u.Position;
 
             // Leash: attack-movers abandon targets that kite beyond Range + LeashBonus
             // (explicit AttackCommand orders have no leash — the player asked for that chase).
@@ -87,24 +87,41 @@ public sealed partial class SimWorld
                 u.Path = null;
                 if (u.Weapon.CooldownRemaining == 0)
                 {
-                    target.Hp -= u.Weapon.Damage;
+                    if (targetUnit is not null) targetUnit.Hp -= u.Weapon.Damage;
+                    else targetBuilding!.Hp -= u.Weapon.Damage;
                     u.Weapon.CooldownRemaining = u.Weapon.CooldownTicks;
                 }
             }
             else
             {
-                // chase: follow a (cached) field toward the target's current cell
-                var (tx, ty) = Map.WorldToCell(target.Position);
+                // chase: follow a (cached) field toward the target's current cell.
+                // Building targets: the footprint cell is impassable, so the field is empty
+                // until Task 7 adds approach seeding — acceptable for stationary in-range attacks.
+                var (tx, ty) = Map.WorldToCell(targetPos);
                 u.HasMoveOrder = true;
-                u.MoveTarget = target.Position;
+                u.MoveTarget = targetPos;
                 u.Path = GetField(tx, ty);
                 u.PathVersion = Map.Version;
             }
         }
     }
 
+    /// <summary>Resolves a target id to (position, alive) for unit or building targets.
+    /// Building "position" is the footprint center — a v1 approximation for range checks.</summary>
+    private bool TryResolveTarget(int targetId, out FixVec position, out Unit? unit, out Building? building)
+    {
+        unit = GetUnit(targetId);
+        if (unit is not null && unit.Hp > 0) { position = unit.Position; building = null; return true; }
+        building = GetBuilding(targetId);
+        if (building is not null && building.Hp > 0) { position = CenterOf(building); unit = null; return true; }
+        position = default;
+        unit = null;
+        building = null;
+        return false;
+    }
+
     /// <summary>Nearest living enemy within range; ties broken by spawn order (stable list iteration,
-    /// strict less-than keeps the earliest). Deterministic.</summary>
+    /// strict less-than keeps the earliest). Units strictly preferred over buildings. Deterministic.</summary>
     private int AcquireTarget(Unit u, Fix acquireRange)
     {
         var rangeSq = acquireRange * acquireRange;
@@ -116,6 +133,14 @@ public sealed partial class SimWorld
             var d = (e.Position - u.Position).LengthSquared();
             if (d > rangeSq) continue;
             if (best == 0 || d < bestDist) { best = e.Id; bestDist = d; }
+        }
+        if (best != 0) return best;
+        foreach (var b in _buildings)
+        {
+            if (b.OwnerId == u.OwnerId || b.Hp <= 0) continue;
+            var d = (CenterOf(b) - u.Position).LengthSquared();
+            if (d > rangeSq) continue;
+            if (best == 0 || d < bestDist) { best = b.Id; bestDist = d; }
         }
         return best;
     }

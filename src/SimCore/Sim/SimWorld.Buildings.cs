@@ -100,6 +100,9 @@ public sealed partial class SimWorld
             for (int y = b.CellY; y < b.CellY + b.Spec.Height; y++)
                 for (int x = b.CellX; x < b.CellX + b.Spec.Width; x++)
                     Map.SetPassable(x, y, true);
+            // Clear dangling attack orders so killers don't carry a dead id across the tick.
+            foreach (var u in _units)
+                if (u.AttackTargetId == b.Id) u.AttackTargetId = 0;
             _buildingsById.Remove(b.Id);
             _buildings.RemoveAt(i);
         }
