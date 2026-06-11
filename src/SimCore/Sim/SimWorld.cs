@@ -46,6 +46,10 @@ public sealed partial class SimWorld
 
     private int Spawn(int ownerId, FixVec pos, Fix speedPerTick, int hp, int supplyCost, Weapon? weapon, HarvesterSpec? harvester)
     {
+        EnsureOccupancy();
+        var (cx, cy) = Map.WorldToCell(pos);
+        if (OccupantAt(cx, cy) != 0) return 0; // cell occupied — reject without consuming id or supply
+
         var u = new Unit
         {
             Id = _nextId++, OwnerId = ownerId, Position = pos, SpeedPerTick = speedPerTick,
@@ -54,6 +58,7 @@ public sealed partial class SimWorld
         _units.Add(u);
         _byId[u.Id] = u;
         _players[ownerId].SupplyUsed += supplyCost;
+        ClaimCell(cx, cy, u.Id);
         return u.Id;
     }
 
@@ -77,6 +82,7 @@ public sealed partial class SimWorld
     /// <summary>Advance one tick. Commands are applied first, then systems run in fixed order.</summary>
     public void Step(IReadOnlyList<Command> commands)
     {
+        EnsureOccupancy();
         foreach (var cmd in commands) Apply(cmd);
         UpdateCombat();
         MoveUnits();
@@ -224,8 +230,11 @@ public sealed partial class SimWorld
         for (int i = _units.Count - 1; i >= 0; i--)
         {
             if (_units[i].Hp > 0) continue;
-            _players[_units[i].OwnerId].SupplyUsed -= _units[i].SupplyCost;
-            _byId.Remove(_units[i].Id);
+            var dead = _units[i];
+            var (cx, cy) = Map.WorldToCell(dead.Position);
+            ReleaseCell(cx, cy, dead.Id);
+            _players[dead.OwnerId].SupplyUsed -= dead.SupplyCost;
+            _byId.Remove(dead.Id);
             _units.RemoveAt(i);
         }
     }

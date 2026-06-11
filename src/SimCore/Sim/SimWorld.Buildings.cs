@@ -84,7 +84,7 @@ public sealed partial class SimWorld
         }
     }
 
-    /// <summary>First passable perimeter cell in fixed scan order — deterministic.</summary>
+    /// <summary>First passable, unoccupied perimeter cell in fixed scan order — deterministic.</summary>
     private (int x, int y)? FindSpawnCell(Building b)
     {
         for (int y = b.CellY - 1; y <= b.CellY + b.Spec.Height; y++)
@@ -92,7 +92,7 @@ public sealed partial class SimWorld
             {
                 var onPerimeter = x == b.CellX - 1 || x == b.CellX + b.Spec.Width
                                || y == b.CellY - 1 || y == b.CellY + b.Spec.Height;
-                if (onPerimeter && Map.IsPassable(x, y)) return (x, y);
+                if (onPerimeter && Map.IsPassable(x, y) && OccupantAt(x, y) == 0) return (x, y);
             }
         return null;
     }
