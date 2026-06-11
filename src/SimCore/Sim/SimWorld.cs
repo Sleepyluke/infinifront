@@ -27,7 +27,25 @@ public sealed partial class SimWorld
 
     public int SpawnUnit(int ownerId, FixVec pos, Fix speedPerTick, int hp, Weapon? weapon = null)
     {
-        var u = new Unit { Id = _nextId++, OwnerId = ownerId, Position = pos, SpeedPerTick = speedPerTick, Hp = hp, Weapon = weapon };
+        // Legacy overload: clones the weapon so callers can never alias cooldown state.
+        var clone = weapon is null ? null : new Weapon
+        {
+            Damage = weapon.Damage, Range = weapon.Range,
+            CooldownTicks = weapon.CooldownTicks, CooldownRemaining = weapon.CooldownRemaining
+        };
+        return Spawn(ownerId, pos, speedPerTick, hp, supplyCost: 0, clone, harvester: null);
+    }
+
+    public int SpawnUnit(int ownerId, FixVec pos, UnitSpec spec) =>
+        Spawn(ownerId, pos, spec.Speed, spec.MaxHp, spec.SupplyCost, spec.Weapon?.Instantiate(), spec.Harvester);
+
+    private int Spawn(int ownerId, FixVec pos, Fix speedPerTick, int hp, int supplyCost, Weapon? weapon, HarvesterSpec? harvester)
+    {
+        var u = new Unit
+        {
+            Id = _nextId++, OwnerId = ownerId, Position = pos, SpeedPerTick = speedPerTick,
+            Hp = hp, SupplyCost = supplyCost, Weapon = weapon, Harvester = harvester
+        };
         _units.Add(u);
         _byId[u.Id] = u;
         return u.Id;

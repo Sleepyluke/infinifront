@@ -20,4 +20,7 @@ public sealed class Unit
 
     public bool IsAttackMoving { get; set; }
     public FixVec AttackMoveDest { get; set; }
+
+    public int SupplyCost { get; set; }
+    public HarvesterSpec? Harvester { get; set; }
 }

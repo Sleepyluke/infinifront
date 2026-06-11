@@ -4,6 +4,11 @@ namespace SimCore.Sim;
 
 public sealed partial class SimWorld
 {
+    // Hysteresis band: acquisition at Range + AcquireBonus, leash drop at Range + LeashBonus.
+    // Invariant: LeashBonus > AcquireBonus, else attack-movers thrash at the boundary.
+    private static readonly Fix AcquireBonus = Fix.FromInt(2);
+    private static readonly Fix LeashBonus = Fix.FromInt(4);
+
     /// <summary>Runs after commands, before movement. Damage exchange is symmetric within a
     /// tick: a unit brought to 0 Hp earlier in the pass still fires (attacker Hp is not
     /// checked), so mutual kills are possible and spawn order grants no damage advantage.
@@ -29,7 +34,7 @@ public sealed partial class SimWorld
             // Attack-move: acquire a target, or resume/finish the march.
             if (u.IsAttackMoving && u.Weapon is not null && u.AttackTargetId == 0)
             {
-                var acquired = AcquireTarget(u, u.Weapon.Range + Fix.FromInt(2));
+                var acquired = AcquireTarget(u, u.Weapon.Range + AcquireBonus);
                 if (acquired != 0)
                 {
                     u.AttackTargetId = acquired;
@@ -68,11 +73,11 @@ public sealed partial class SimWorld
 
             var delta = target.Position - u.Position;
 
-            // Leash: attack-movers abandon targets that kite beyond acquisition range + 2
+            // Leash: attack-movers abandon targets that kite beyond Range + LeashBonus
             // (explicit AttackCommand orders have no leash — the player asked for that chase).
             if (u.IsAttackMoving)
             {
-                var leash = u.Weapon.Range + Fix.FromInt(4);
+                var leash = u.Weapon.Range + LeashBonus;
                 if (delta.LengthSquared() > leash * leash) { u.AttackTargetId = 0; continue; }
             }
 
