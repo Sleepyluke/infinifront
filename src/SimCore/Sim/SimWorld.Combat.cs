@@ -26,7 +26,10 @@ public sealed partial class SimWorld
         {
             // Clear dead/missing targets up front so re-acquisition happens this tick, not next.
             if (u.AttackTargetId != 0 && !TryResolveTarget(u.AttackTargetId, out _, out _, out _))
+            {
                 u.AttackTargetId = 0;
+                if (u.HasAnchor) { u.HasAnchor = false; }
+            }
 
             // Attack-move: acquire a target, or resume/finish the march.
             if (u.IsAttackMoving && u.Weapon is not null && u.AttackTargetId == 0)
@@ -64,10 +67,24 @@ public sealed partial class SimWorld
                 }
             }
 
+            // Idle stance acquisition: units with no orders engage per stance.
+            if (!u.IsAttackMoving && !u.HasMoveOrder && u.HarvestPhase == HarvestPhase.None
+                && u.Weapon is not null && u.AttackTargetId == 0 && u.Stance != Stance.Passive)
+            {
+                var acquired = AcquireTarget(u, u.Weapon.Range + AcquireBonus);
+                if (acquired != 0)
+                {
+                    u.AttackTargetId = acquired;
+                    u.Anchor = u.Position;
+                    u.HasAnchor = true;
+                }
+            }
+
             if (u.Weapon is null || u.AttackTargetId == 0) continue;
             if (!TryResolveTarget(u.AttackTargetId, out var targetPos, out var targetUnit, out var targetBuilding))
             {
                 u.AttackTargetId = 0;
+                if (u.HasAnchor) { u.HasAnchor = false; }
                 continue;
             }
 
@@ -78,7 +95,12 @@ public sealed partial class SimWorld
                 var (tcx, tcy) = targetUnit is not null
                     ? Map.WorldToCell(targetUnit.Position)
                     : Map.WorldToCell(CenterOf(targetBuilding!));
-                if (!IsVisibleTo(u.OwnerId, tcx, tcy)) { u.AttackTargetId = 0; continue; }
+                if (!IsVisibleTo(u.OwnerId, tcx, tcy))
+                {
+                    u.AttackTargetId = 0;
+                    if (u.HasAnchor) { u.HasAnchor = false; }
+                    continue;
+                }
             }
 
             var delta = targetPos - u.Position;
@@ -89,6 +111,19 @@ public sealed partial class SimWorld
             {
                 var leash = u.Weapon.Range + LeashBonus;
                 if (delta.LengthSquared() > leash * leash) { u.AttackTargetId = 0; continue; }
+            }
+
+            // Anchored leash: idle-acquired targets are abandoned when they kite beyond
+            // anchor + Range + LeashBonus (measured from anchor, not current position).
+            if (u.HasAnchor)
+            {
+                var leash = u.Weapon.Range + LeashBonus;
+                if ((targetPos - u.Anchor).LengthSquared() > leash * leash)
+                {
+                    u.AttackTargetId = 0;
+                    u.HasAnchor = false;
+                    continue;
+                }
             }
 
             if (delta.LengthSquared() <= u.Weapon.Range * u.Weapon.Range)

@@ -62,6 +62,9 @@ public static class StateHasher
             }
             h = Mix(h, (ulong)u.SightRange);
             h = Mix(h, (ulong)u.Stance);
+            h = Mix(h, u.HasAnchor ? 1UL : 0UL);
+            h = Mix(h, (ulong)u.Anchor.X.Raw);
+            h = Mix(h, (ulong)u.Anchor.Y.Raw);
         }
 
         foreach (var p in world.Players)

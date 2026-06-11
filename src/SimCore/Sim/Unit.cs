@@ -31,6 +31,9 @@ public sealed class Unit
     public int GatherTicksRemaining { get; set; }
 
     public Stance Stance { get; set; } = Stance.AutoAttack;
+
+    public bool HasAnchor { get; set; }
+    public FixVec Anchor { get; set; }
 }
 
 public enum HarvestPhase : byte { None = 0, MovingToNode = 1, Gathering = 2, Returning = 3 }

@@ -111,6 +111,7 @@ public sealed partial class SimWorld
                     if (u is null || u.OwnerId != mv.PlayerId) continue;
                     u.IsAttackMoving = false;
                     u.AttackTargetId = 0;
+                    u.HasAnchor = false;
                     u.HarvestPhase = HarvestPhase.None;
                     u.HasMoveOrder = true;
                     u.MoveTarget = mv.Target;
@@ -137,6 +138,7 @@ public sealed partial class SimWorld
                     }
                     u.AttackTargetId = atk.TargetId;
                     u.IsAttackMoving = false; // explicit attack order replaces any attack-move
+                    u.HasAnchor = false;
                     u.HasMoveOrder = false;
                     u.Path = null;
                 }
@@ -151,6 +153,7 @@ public sealed partial class SimWorld
                     u.IsAttackMoving = u.Weapon is not null; // weaponless units treat this as a plain move
                     u.AttackMoveDest = am.Target;
                     u.AttackTargetId = 0;
+                    u.HasAnchor = false;
                     u.HasMoveOrder = true;
                     u.MoveTarget = am.Target;
                     u.Path = amField;
@@ -188,6 +191,7 @@ public sealed partial class SimWorld
                     u.HarvestNodeId = hc.NodeId;
                     u.AttackTargetId = 0;
                     u.IsAttackMoving = false;
+                    u.HasAnchor = false;
                     u.HasMoveOrder = false; // UpdateHarvest issues the approach
                     u.Path = null;
                 }
