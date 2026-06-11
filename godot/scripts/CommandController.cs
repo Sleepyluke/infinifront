@@ -27,7 +27,7 @@ public partial class CommandController : Node2D
     {
         switch (e)
         {
-            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.A } when _sel.SelectedUnits.Count > 0:
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.A } when _ghostSpec is null && _sel.SelectedUnits.Count > 0:
                 _attackMoveArmed = true;
                 break;
             case InputEventKey { Pressed: true, Keycode: Key.Escape }:

@@ -40,6 +40,10 @@ public partial class Main : Node2D
         AddChild(Commands);
         Commands.Init(Runner, Selection, viewSync);
 
+        var hud = new Hud { Name = "Hud" };
+        AddChild(hud);
+        hud.Init(Runner, Selection, Commands);
+
         GD.Print($"LlmRts boot OK units={Runner.World.Units.Count} buildings={Runner.World.Buildings.Count}");
     }
 }
