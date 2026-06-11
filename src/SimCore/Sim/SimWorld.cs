@@ -80,12 +80,14 @@ public sealed partial class SimWorld
         return f;
     }
 
-    /// <summary>Advance one tick. Commands are applied first, then systems run in fixed order.</summary>
+    /// <summary>Advance one tick. Vision is updated before commands are applied so that
+    /// AttackCommand validation reads fresh grids (not stale/empty from the previous tick).
+    /// Vision depends only on positions, which commands do not change during Apply.</summary>
     public void Step(IReadOnlyList<Command> commands)
     {
         EnsureOccupancy();
-        foreach (var cmd in commands) Apply(cmd);
         UpdateVision();
+        foreach (var cmd in commands) Apply(cmd);
         UpdateCombat();
         MoveUnits();
         UpdateHarvest();
@@ -125,6 +127,14 @@ public sealed partial class SimWorld
                     var tb = tu is null ? GetBuilding(atk.TargetId) : null;
                     if (tu is null && tb is null) continue;
                     if ((tu?.OwnerId ?? tb!.OwnerId) == atk.PlayerId) continue; // no friendly fire
+                    // Fog: reject explicit attacks on targets whose cell isn't visible to the issuing player.
+                    if (FogEnabled)
+                    {
+                        var (vcx, vcy) = tu is not null
+                            ? Map.WorldToCell(tu.Position)
+                            : Map.WorldToCell(CenterOf(tb!));
+                        if (!IsVisibleTo(atk.PlayerId, vcx, vcy)) continue;
+                    }
                     u.AttackTargetId = atk.TargetId;
                     u.IsAttackMoving = false; // explicit attack order replaces any attack-move
                     u.HasMoveOrder = false;

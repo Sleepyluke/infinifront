@@ -71,6 +71,16 @@ public sealed partial class SimWorld
                 continue;
             }
 
+            // Fog chase-drop: if the target has moved into a cell no longer visible to the
+            // attacker's owner, lose track of it (applies to both attack-move and explicit orders).
+            if (FogEnabled)
+            {
+                var (tcx, tcy) = targetUnit is not null
+                    ? Map.WorldToCell(targetUnit.Position)
+                    : Map.WorldToCell(CenterOf(targetBuilding!));
+                if (!IsVisibleTo(u.OwnerId, tcx, tcy)) { u.AttackTargetId = 0; continue; }
+            }
+
             var delta = targetPos - u.Position;
 
             // Leash: attack-movers abandon targets that kite beyond Range + LeashBonus
@@ -121,7 +131,8 @@ public sealed partial class SimWorld
     }
 
     /// <summary>Nearest living enemy within range; ties broken by spawn order (stable list iteration,
-    /// strict less-than keeps the earliest). Units strictly preferred over buildings. Deterministic.</summary>
+    /// strict less-than keeps the earliest). Units strictly preferred over buildings. Deterministic.
+    /// When FogEnabled, skips enemies in cells not visible to the acquiring unit's owner.</summary>
     private int AcquireTarget(Unit u, Fix acquireRange)
     {
         var rangeSq = acquireRange * acquireRange;
@@ -130,6 +141,8 @@ public sealed partial class SimWorld
         foreach (var e in _units)
         {
             if (e.OwnerId == u.OwnerId || e.Hp <= 0) continue;
+            var (ecx, ecy) = Map.WorldToCell(e.Position);
+            if (!IsVisibleTo(u.OwnerId, ecx, ecy)) continue;
             var d = (e.Position - u.Position).LengthSquared();
             if (d > rangeSq) continue;
             if (best == 0 || d < bestDist) { best = e.Id; bestDist = d; }
@@ -138,6 +151,8 @@ public sealed partial class SimWorld
         foreach (var b in _buildings)
         {
             if (b.OwnerId == u.OwnerId || b.Hp <= 0) continue;
+            var bc = Map.WorldToCell(CenterOf(b));
+            if (!IsVisibleTo(u.OwnerId, bc.Item1, bc.Item2)) continue;
             var d = (CenterOf(b) - u.Position).LengthSquared();
             if (d > rangeSq) continue;
             if (best == 0 || d < bestDist) { best = b.Id; bestDist = d; }

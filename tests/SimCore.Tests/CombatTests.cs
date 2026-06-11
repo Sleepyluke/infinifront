@@ -7,7 +7,8 @@ public class CombatTests
     private static Weapon TestWeapon() =>
         new() { Damage = 10, Range = Fix.FromInt(2), CooldownTicks = 4 };
 
-    private static SimWorld NewWorld() => new(new MapGrid(20, 20), seed: 1);
+    // FogEnabled = false: these tests verify damage/leash/cooldown mechanics, not targeting visibility.
+    private static SimWorld NewWorld() => new SimWorld(new MapGrid(20, 20), seed: 1) { FogEnabled = false };
 
     [Fact]
     public void In_Range_Attack_Deals_Damage_On_Cooldown_Cadence()
