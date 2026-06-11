@@ -7,7 +7,10 @@ namespace SpriteSlicer;
 public static class Slicer
 {
     /// <summary>Per-pixel distance to #FF00FF below tolerance → alpha 0.
-    /// Tolerance is generous (Gemini PNGs carry compression fringe).</summary>
+    /// Tolerance is generous (Gemini PNGs carry compression fringe).
+    /// Also clears magenta-dominant blend pixels (R and B both well above G) —
+    /// these are antialiased sprite/background edges that would otherwise leave
+    /// a magenta halo after downscaling.</summary>
     public static void ChromaKey(Image<Rgba32> img, int tolerance = 40)
     {
         img.ProcessPixelRows(rows =>
@@ -19,13 +22,16 @@ public static class Slicer
                 {
                     var p = row[x];
                     int d = System.Math.Abs(p.R - 255) + p.G + System.Math.Abs(p.B - 255);
-                    if (d <= tolerance) row[x] = new Rgba32(0, 0, 0, 0);
+                    bool magentaBlend = p.R > p.G + 70 && p.B > p.G + 70;
+                    if (d <= tolerance || magentaBlend) row[x] = new Rgba32(0, 0, 0, 0);
                 }
             }
         });
     }
 
-    /// <summary>Cuts a row rect into equal-width frames.</summary>
+    /// <summary>Cuts a row rect into equal-width frames. When rowRect.Width is not
+    /// divisible by frameCount, the remainder pixels at the right edge are truncated
+    /// (each frame is Width / frameCount wide, integer division).</summary>
     public static List<Image<Rgba32>> SliceRow(Image<Rgba32> sheet, Rectangle rowRect, int frameCount)
     {
         var frames = new List<Image<Rgba32>>(frameCount);
@@ -58,7 +64,9 @@ public static class Slicer
     }
 
     /// <summary>Crops to content, scales (nearest-neighbor) to fit the cell with
-    /// a small margin, centers horizontally, bottom-aligns to cellSize - baselinePx.</summary>
+    /// a small margin, centers horizontally, bottom-aligns to cellSize - baselinePx.
+    /// Note: scales both up AND down — small content is enlarged and large content
+    /// is shrunk, normalizing content size across frames of differing resolution.</summary>
     public static Image<Rgba32> RenderToCell(Image<Rgba32> frame, int cellSize, int baselinePx)
     {
         var cell = new Image<Rgba32>(cellSize, cellSize);

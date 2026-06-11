@@ -38,10 +38,31 @@ public class SlicerTests
     [Fact]
     public void SliceRow_Produces_FrameCount_Equal_Cells()
     {
-        var strip = Filled(300, 100, Magenta);
-        var frames = Slicer.SliceRow(strip, new Rectangle(0, 0, 300, 100), 3);
+        // Non-zero rect origin + one distinct marker pixel per frame region:
+        // catches offset bugs where frames are cut from the wrong place.
+        var sheet = Filled(400, 200, Magenta);
+        var rect = new Rectangle(50, 40, 300, 100); // 3 frames of 100x100
+        var markers = new[]
+        {
+            new Rgba32(10, 20, 30, 255),
+            new Rgba32(40, 50, 60, 255),
+            new Rgba32(70, 80, 90, 255),
+        };
+        for (int i = 0; i < 3; i++)
+            sheet[rect.X + i * 100 + 50, rect.Y + 50] = markers[i]; // center of each frame region
+
+        var frames = Slicer.SliceRow(sheet, rect, 3);
+
         Assert.Equal(3, frames.Count);
         Assert.All(frames, f => Assert.Equal(100, f.Width));
+        for (int i = 0; i < 3; i++)
+        {
+            Assert.Equal(markers[i], frames[i][50, 50]);
+            // marker from neighboring frames must NOT appear in this frame
+            for (int j = 0; j < 3; j++)
+                if (j != i)
+                    Assert.NotEqual(markers[j], frames[i][50, 50]);
+        }
     }
 
     [Fact]

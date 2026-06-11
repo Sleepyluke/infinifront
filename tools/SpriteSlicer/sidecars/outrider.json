@@ -1,0 +1,19 @@
+﻿{
+  "source": "assets/raw-sprites/outrider-v1.png",
+  "output": "godot/assets/units/outrider.png",
+  "iconOutput": "godot/assets/icons/outrider.png",
+  "icon": { "x": 2582, "y": 1300, "w": 216, "h": 224 },
+  "baselinePx": 4,
+  "rows": [
+    { "anim": "idle",   "facing": "S", "frames": 4, "rect": { "x": 23,   "y": 44,   "w": 948,  "h": 201 } },
+    { "anim": "idle",   "facing": "W", "frames": 4, "rect": { "x": 21,   "y": 294,  "w": 948,  "h": 191 } },
+    { "anim": "idle",   "facing": "N", "frames": 4, "rect": { "x": 44,   "y": 534,  "w": 948,  "h": 199 } },
+    { "anim": "walk",   "facing": "S", "frames": 6, "rect": { "x": 1197, "y": 44,   "w": 1398, "h": 201 } },
+    { "anim": "walk",   "facing": "W", "frames": 6, "rect": { "x": 1196, "y": 294,  "w": 1398, "h": 191 } },
+    { "anim": "walk",   "facing": "N", "frames": 6, "rect": { "x": 1202, "y": 534,  "w": 1398, "h": 199 } },
+    { "anim": "attack", "facing": "S", "frames": 5, "rect": { "x": 5,    "y": 1038, "w": 1175, "h": 207 } },
+    { "anim": "attack", "facing": "W", "frames": 6, "rect": { "x": 1196, "y": 1038, "w": 1398, "h": 207 } },
+    { "anim": "attack", "facing": "N", "frames": 5, "rect": { "x": 5,    "y": 1038, "w": 1175, "h": 207 } },
+    { "anim": "death",  "facing": "S", "frames": 6, "rect": { "x": 710,  "y": 1300, "w": 1860, "h": 231 } }
+  ]
+}

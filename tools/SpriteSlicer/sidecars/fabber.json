@@ -1,0 +1,19 @@
+﻿{
+  "source": "assets/raw-sprites/fabber-v1.png",
+  "output": "godot/assets/units/fabber.png",
+  "iconOutput": "godot/assets/icons/fabber.png",
+  "icon": { "x": 2584, "y": 1310, "w": 215, "h": 214 },
+  "baselinePx": 8,
+  "rows": [
+    { "anim": "idle",   "facing": "S", "frames": 4, "rect": { "x": 8,    "y": 40,   "w": 952,  "h": 213 } },
+    { "anim": "idle",   "facing": "W", "frames": 4, "rect": { "x": 8,    "y": 528,  "w": 952,  "h": 203 } },
+    { "anim": "idle",   "facing": "N", "frames": 4, "rect": { "x": 18,   "y": 776,  "w": 948,  "h": 211 } },
+    { "anim": "walk",   "facing": "S", "frames": 5, "rect": { "x": 8,    "y": 296,  "w": 1180, "h": 203 } },
+    { "anim": "walk",   "facing": "W", "frames": 6, "rect": { "x": 1180, "y": 528,  "w": 1392, "h": 203 } },
+    { "anim": "walk",   "facing": "N", "frames": 6, "rect": { "x": 1208, "y": 296,  "w": 1392, "h": 203 } },
+    { "anim": "attack", "facing": "S", "frames": 5, "rect": { "x": 0,    "y": 1040, "w": 1205, "h": 217 } },
+    { "anim": "attack", "facing": "W", "frames": 6, "rect": { "x": 1200, "y": 1040, "w": 1386, "h": 217 } },
+    { "anim": "attack", "facing": "N", "frames": 5, "rect": { "x": 0,    "y": 1040, "w": 1205, "h": 217 } },
+    { "anim": "death",  "facing": "S", "frames": 6, "rect": { "x": 705,  "y": 1310, "w": 1860, "h": 223 } }
+  ]
+}

@@ -1,0 +1,19 @@
+﻿{
+  "source": "assets/raw-sprites/trooper-v2.png",
+  "output": "godot/assets/units/trooper.png",
+  "iconOutput": "godot/assets/icons/trooper.png",
+  "icon": { "x": 2582, "y": 1311, "w": 218, "h": 213 },
+  "baselinePx": 8,
+  "rows": [
+    { "anim": "idle",   "facing": "S", "frames": 4, "rect": { "x": 20,   "y": 40,   "w": 948,  "h": 211 } },
+    { "anim": "idle",   "facing": "W", "frames": 4, "rect": { "x": 305,  "y": 296,  "w": 948,  "h": 205 } },
+    { "anim": "idle",   "facing": "N", "frames": 3, "rect": { "x": 2133, "y": 790,  "w": 680,  "h": 199 } },
+    { "anim": "walk",   "facing": "S", "frames": 5, "rect": { "x": 33,   "y": 790,  "w": 1180, "h": 199 } },
+    { "anim": "walk",   "facing": "W", "frames": 6, "rect": { "x": 1192, "y": 544,  "w": 1398, "h": 197 } },
+    { "anim": "walk",   "facing": "N", "frames": 6, "rect": { "x": 1170, "y": 296,  "w": 1392, "h": 205 } },
+    { "anim": "attack", "facing": "S", "frames": 5, "rect": { "x": 5,    "y": 1040, "w": 1175, "h": 220 } },
+    { "anim": "attack", "facing": "W", "frames": 5, "rect": { "x": 1192, "y": 1040, "w": 1140, "h": 220 } },
+    { "anim": "attack", "facing": "N", "frames": 5, "rect": { "x": 5,    "y": 1040, "w": 1175, "h": 220 } },
+    { "anim": "death",  "facing": "S", "frames": 6, "rect": { "x": 715,  "y": 1310, "w": 1860, "h": 226 } }
+  ]
+}
