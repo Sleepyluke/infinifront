@@ -46,4 +46,36 @@ public class RallyDestroyTests
         w.Step(new Command[] { new SetRallyCommand(1, rax, w.Map.CellCenter(20, 20)) });
         Assert.False(w.GetBuilding(rax)!.HasRally);
     }
+
+    [Fact]
+    public void Destroy_Kills_Own_Units_And_Releases_Supply()
+    {
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        w.Players[0].SupplyCap = 10;
+        var id = w.SpawnUnit(0, w.Map.CellCenter(5, 5), ReferenceSpecs.Trooper);
+        var used = w.Players[0].SupplyUsed;
+        w.Step(new Command[] { new DestroyCommand(0, new[] { id }) });
+        Assert.Null(w.GetUnit(id));
+        Assert.Equal(used - ReferenceSpecs.Trooper.SupplyCost, w.Players[0].SupplyUsed);
+        Assert.Equal(0, w.OccupantAt(5, 5)); // occupancy released
+    }
+
+    [Fact]
+    public void Destroy_Kills_Own_Building_And_Restores_Passability()
+    {
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        var b = w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 5, 5);
+        w.Step(new Command[] { new DestroyCommand(0, new[] { b }) });
+        Assert.Null(w.GetBuilding(b));
+        Assert.True(w.Map.IsPassable(5, 5));
+    }
+
+    [Fact]
+    public void Destroy_Ignores_Enemy_Ids()
+    {
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        var theirs = w.SpawnUnit(1, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 50);
+        w.Step(new Command[] { new DestroyCommand(0, new[] { theirs }) });
+        Assert.NotNull(w.GetUnit(theirs));
+    }
 }

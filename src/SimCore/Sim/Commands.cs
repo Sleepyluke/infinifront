@@ -22,3 +22,5 @@ public sealed record SetStanceCommand(int PlayerId, int[] UnitIds, Stance Stance
 public sealed record PatrolCommand(int PlayerId, int[] UnitIds, FixVec Target) : Command(PlayerId);
 
 public sealed record SetRallyCommand(int PlayerId, int BuildingId, FixVec Target, bool Clear = false) : Command(PlayerId);
+
+public sealed record DestroyCommand(int PlayerId, int[] Ids) : Command(PlayerId);

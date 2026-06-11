@@ -261,6 +261,22 @@ public sealed partial class SimWorld
                     srBuilding.RallyPoint = sr.Target;
                 }
                 break;
+            case DestroyCommand dc:
+                foreach (var id in dc.Ids)
+                {
+                    var u = GetUnit(id);
+                    if (u is not null && u.OwnerId == dc.PlayerId)
+                    {
+                        u.Hp = 0;
+                        continue;
+                    }
+                    var b = GetBuilding(id);
+                    if (b is not null && b.OwnerId == dc.PlayerId)
+                    {
+                        b.Hp = 0;
+                    }
+                }
+                break;
         }
     }
 
