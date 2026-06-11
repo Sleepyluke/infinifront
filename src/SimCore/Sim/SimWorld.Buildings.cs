@@ -39,6 +39,20 @@ public sealed partial class SimWorld
         return b.Id;
     }
 
+    private void UpdateConstruction()
+    {
+        foreach (var b in _buildings)
+        {
+            if (b.IsComplete) continue;
+            b.BuildProgress++;
+            if (b.BuildProgress >= b.Spec.BuildTimeTicks)
+            {
+                b.IsComplete = true;
+                _players[b.OwnerId].SupplyCap += b.Spec.SupplyProvided;
+            }
+        }
+    }
+
     /// <summary>Reverse-index removal preserves order; restores footprint passability.</summary>
     private void RemoveDeadBuildings()
     {

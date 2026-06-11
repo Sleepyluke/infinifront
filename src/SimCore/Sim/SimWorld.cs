@@ -80,6 +80,7 @@ public sealed partial class SimWorld
         foreach (var cmd in commands) Apply(cmd);
         UpdateCombat();
         MoveUnits();
+        UpdateConstruction();
         RemoveDead();
         RemoveDeadBuildings();
         Tick++;
