@@ -53,6 +53,36 @@ public sealed partial class SimWorld
         }
     }
 
+    private void UpdateProduction()
+    {
+        foreach (var b in _buildings)
+        {
+            if (!b.IsComplete || b.Queue.Count == 0) continue;
+            var item = b.Queue[0];
+            item.RemainingTicks--;
+            if (item.RemainingTicks > 0) continue;
+            var cell = FindSpawnCell(b);
+            if (cell is null) continue; // perimeter blocked — retry next tick
+            b.Queue.RemoveAt(0);
+            // supply was reserved at enqueue; SpawnUnit adds it again, so subtract the duplicate
+            SpawnUnit(b.OwnerId, Map.CellCenter(cell.Value.x, cell.Value.y), item.Spec);
+            _players[b.OwnerId].SupplyUsed -= item.Spec.SupplyCost;
+        }
+    }
+
+    /// <summary>First passable perimeter cell in fixed scan order — deterministic.</summary>
+    private (int x, int y)? FindSpawnCell(Building b)
+    {
+        for (int y = b.CellY - 1; y <= b.CellY + b.Spec.Height; y++)
+            for (int x = b.CellX - 1; x <= b.CellX + b.Spec.Width; x++)
+            {
+                var onPerimeter = x == b.CellX - 1 || x == b.CellX + b.Spec.Width
+                               || y == b.CellY - 1 || y == b.CellY + b.Spec.Height;
+                if (onPerimeter && Map.IsPassable(x, y)) return (x, y);
+            }
+        return null;
+    }
+
     /// <summary>Reverse-index removal preserves order; restores footprint passability.</summary>
     private void RemoveDeadBuildings()
     {

@@ -11,4 +11,11 @@ public sealed class Building
     public int Hp { get; set; }
     public bool IsComplete { get; set; }
     public int BuildProgress { get; set; }
+    public System.Collections.Generic.List<TrainingItem> Queue { get; } = new(); // index 0 is in production
+}
+
+public sealed class TrainingItem
+{
+    public UnitSpec Spec { get; init; } = null!;
+    public int RemainingTicks { get; set; }
 }

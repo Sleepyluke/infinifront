@@ -81,6 +81,7 @@ public sealed partial class SimWorld
         UpdateCombat();
         MoveUnits();
         UpdateConstruction();
+        UpdateProduction();
         RemoveDead();
         RemoveDeadBuildings();
         Tick++;
@@ -143,6 +144,17 @@ public sealed partial class SimWorld
                 if (!FootprintPlaceable(bc.CellX, bc.CellY, bc.Spec.Width, bc.Spec.Height)) break;
                 _players[bc.PlayerId].Minerals -= bc.Spec.MineralCost;
                 PlaceBuilding(bc.PlayerId, bc.Spec, bc.CellX, bc.CellY);
+                break;
+            case TrainCommand tc:
+                var trainer = GetBuilding(tc.BuildingId);
+                if (trainer is null || trainer.OwnerId != tc.PlayerId || !trainer.IsComplete || !trainer.Spec.CanTrain) break;
+                if (trainer.Queue.Count >= 5) break;
+                var ps = _players[tc.PlayerId];
+                if (ps.Minerals < tc.Spec.MineralCost) break;
+                if (ps.SupplyUsed + tc.Spec.SupplyCost > ps.SupplyCap) break;
+                ps.Minerals -= tc.Spec.MineralCost;
+                ps.SupplyUsed += tc.Spec.SupplyCost; // reserve supply at enqueue
+                trainer.Queue.Add(new TrainingItem { Spec = tc.Spec, RemainingTicks = tc.Spec.BuildTimeTicks });
                 break;
         }
     }
