@@ -6,16 +6,19 @@ namespace LlmRts.Godot;
 /// Redrawn once per sim tick (not per frame). Left-click/drag jumps the camera.</summary>
 public partial class Minimap : Control
 {
-    private new const int Scale = 4; // px per cell (hides Control.Scale intentionally)
+    private const int PxPerCell = 4;
     private SimRunner _runner = null!;
     private CameraRig _camera = null!;
     private bool _dragging;
+    // Smooth camera rect: redraw only when camera moves or zooms
+    private Vector2 _lastCamPos;
+    private Vector2 _lastCamZoom;
 
     public void Init(SimRunner runner, CameraRig camera)
     {
         _runner = runner;
         _camera = camera;
-        var side = TestMap.Size * Scale;
+        var side = TestMap.Size * PxPerCell;
         CustomMinimumSize = new Vector2(side, side);
         // bottom-left anchor, sitting above the bottom toolbar
         AnchorTop = 1; AnchorBottom = 1;
@@ -40,35 +43,45 @@ public partial class Minimap : Control
         }
     }
 
+    public override void _Process(double delta)
+    {
+        if (_camera.Position != _lastCamPos || _camera.Zoom != _lastCamZoom)
+        {
+            _lastCamPos = _camera.Position;
+            _lastCamZoom = _camera.Zoom;
+            QueueRedraw();
+        }
+    }
+
     private void JumpCamera(Vector2 local) =>
-        _camera.Position = local / Scale * RenderMath.CellPx;
+        _camera.Position = local / PxPerCell * RenderMath.CellPx;
 
     public override void _Draw()
     {
         var w = _runner.World;
-        var side = TestMap.Size * Scale;
+        var side = TestMap.Size * PxPerCell;
 
         DrawRect(new Rect2(0, 0, side, side), new Color(0.30f, 0.27f, 0.23f));
         for (int y = 0; y < w.Map.Height; y++)
             for (int x = 0; x < w.Map.Width; x++)
                 if (!w.Map.IsPassable(x, y))
-                    DrawRect(new Rect2(x * Scale, y * Scale, Scale, Scale), new Color(0.15f, 0.14f, 0.12f));
+                    DrawRect(new Rect2(x * PxPerCell, y * PxPerCell, PxPerCell, PxPerCell), new Color(0.15f, 0.14f, 0.12f));
 
         foreach (var n in w.Nodes)
-            DrawRect(new Rect2(n.CellX * Scale, n.CellY * Scale, Scale, Scale), new Color(0.4f, 0.8f, 1f));
+            DrawRect(new Rect2(n.CellX * PxPerCell, n.CellY * PxPerCell, PxPerCell, PxPerCell), new Color(0.4f, 0.8f, 1f));
         foreach (var b in w.Buildings)
-            DrawRect(new Rect2(b.CellX * Scale, b.CellY * Scale, b.Spec.Width * Scale, b.Spec.Height * Scale),
+            DrawRect(new Rect2(b.CellX * PxPerCell, b.CellY * PxPerCell, b.Spec.Width * PxPerCell, b.Spec.Height * PxPerCell),
                 UnitView.PlayerColors[b.OwnerId]);
         foreach (var u in w.Units)
         {
-            var p = RenderMath.ToPx(u.Position) / RenderMath.CellPx * Scale;
+            var p = RenderMath.ToPx(u.Position) / RenderMath.CellPx * PxPerCell;
             DrawRect(new Rect2(p.X - 1, p.Y - 1, 3, 3), UnitView.PlayerColors[u.OwnerId]);
         }
 
         // camera viewport rectangle
         var vp = _camera.GetViewportRect().Size / _camera.Zoom;
-        var topLeft = (_camera.Position - vp / 2) / RenderMath.CellPx * Scale;
-        DrawRect(new Rect2(topLeft, vp / RenderMath.CellPx * Scale), Colors.White, filled: false, width: 1);
+        var topLeft = (_camera.Position - vp / 2) / RenderMath.CellPx * PxPerCell;
+        DrawRect(new Rect2(topLeft, vp / RenderMath.CellPx * PxPerCell), Colors.White, filled: false, width: 1);
 
         DrawRect(new Rect2(0, 0, side, side), Colors.Black, filled: false, width: 2);
     }

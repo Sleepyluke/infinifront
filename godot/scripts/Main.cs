@@ -47,7 +47,7 @@ public partial class Main : Node2D
 
         var minimap = new Minimap { Name = "Minimap" };
         hud.AddChild(minimap);
-        minimap.Init(Runner, GetNode<CameraRig>("Camera"));
+        minimap.Init(Runner, camera);
 
         GD.Print($"LlmRts boot OK units={Runner.World.Units.Count} buildings={Runner.World.Buildings.Count}");
     }
