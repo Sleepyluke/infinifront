@@ -27,6 +27,8 @@ public partial class SimRunner : Node
     {
         if (Paused) return;
         _accum += (float)delta;
+        // Cap catch-up to 5 ticks per frame; sim time slows under stalls rather than bursting.
+        if (_accum > 5 * TickSeconds) _accum = 5 * TickSeconds;
         while (_accum >= TickSeconds)
         {
             _accum -= TickSeconds;

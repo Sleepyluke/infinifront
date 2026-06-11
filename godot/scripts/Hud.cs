@@ -16,6 +16,9 @@ public partial class Hud : CanvasLayer
     private HBoxContainer _buttons = null!;
     private ProgressBar _queueBar = null!;
 
+    // Stale-button detection: tracks last state that RebuildButtons rendered from.
+    private (bool workerSel, int buildingId, bool canTrain) _lastButtonKey;
+
     public void Init(SimRunner runner, SelectionController sel, CommandController cmd)
     {
         _runner = runner; _sel = sel; _cmd = cmd;
@@ -43,6 +46,7 @@ public partial class Hud : CanvasLayer
 
         _sel.SelectionChanged += RebuildButtons;
         _sel.PlayerSwitched += RebuildButtons;
+        runner.Ticked += CheckButtonRelevance;
         RebuildButtons();
     }
 
@@ -85,6 +89,16 @@ public partial class Hud : CanvasLayer
         else _selectionInfo.Text = $"{units.Count} units selected";
     }
 
+    private void CheckButtonRelevance()
+    {
+        var w = _runner.World;
+        bool workerSel = _sel.SelectedUnits.Select(w.GetUnit).Any(u => u?.Harvester is not null);
+        var bld = _sel.SelectedBuilding != 0 ? w.GetBuilding(_sel.SelectedBuilding) : null;
+        bool canTrain = bld is { IsComplete: true, Spec.CanTrain: true };
+        var key = (workerSel, _sel.SelectedBuilding, canTrain);
+        if (key != _lastButtonKey) RebuildButtons();
+    }
+
     private void RebuildButtons()
     {
         foreach (var c in _buttons.GetChildren()) c.QueueFree();
@@ -109,11 +123,18 @@ public partial class Hud : CanvasLayer
             AddButton($"Tank ({ReferenceSpecs.Tank.MineralCost})",
                 () => _runner.Enqueue(new TrainCommand(p, b.Id, ReferenceSpecs.Tank)));
         }
+
+        // Record what we just built so CheckButtonRelevance can skip redundant rebuilds.
+        bool workerSel = workerSelected;
+        var bld = _sel.SelectedBuilding != 0 ? w.GetBuilding(_sel.SelectedBuilding) : null;
+        bool canTrain = bld is { IsComplete: true, Spec.CanTrain: true };
+        _lastButtonKey = (workerSel, _sel.SelectedBuilding, canTrain);
     }
 
     private void AddButton(string text, System.Action onPress)
     {
         var btn = new Button { Text = text };
+        btn.FocusMode = Control.FocusModeEnum.None;
         btn.Pressed += onPress;
         _buttons.AddChild(btn);
     }
