@@ -161,4 +161,20 @@ public class OccupancyTests
         Assert.True(axc >= 5, $"a deadlocked at x={axc}");
         Assert.True(bxc <= 2, $"b deadlocked at x={bxc}");
     }
+
+    [Fact]
+    public void Idle_Blocker_Mid_Path_Does_Not_Kill_Move_Orders()
+    {
+        var w = new SimWorld(new MapGrid(12, 12), seed: 1);
+        var blocker = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 50);
+        var mover = w.SpawnUnit(0, w.Map.CellCenter(2, 5), Fix.FromFraction(1, 2), 50);
+        w.Step(new Command[] { new MoveCommand(0, new[] { mover }, w.Map.CellCenter(9, 5)) });
+        for (int i = 0; i < 30; i++) w.Step(System.Array.Empty<Command>());
+        Assert.True(w.GetUnit(mover)!.HasMoveOrder, "mover falsely arrived behind an idle mid-path blocker");
+        // unblock: move the idle unit aside; mover must resume and arrive
+        w.Step(new Command[] { new MoveCommand(0, new[] { blocker }, w.Map.CellCenter(5, 9)) });
+        for (int i = 0; i < 120; i++) w.Step(System.Array.Empty<Command>());
+        var (cx, cy) = w.Map.WorldToCell(w.GetUnit(mover)!.Position);
+        Assert.Equal((9, 5), (cx, cy));
+    }
 }

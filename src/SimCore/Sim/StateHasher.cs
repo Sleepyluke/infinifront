@@ -10,7 +10,9 @@ public static class StateHasher
     /// Unit.Path and Unit.PathVersion are deliberately excluded: derived caches, recomputed
     /// from hashed state (MoveTarget + map).
     /// Other documented exclusions: SimWorld._fieldCache/_fieldCacheVersion (derived,
-    /// version-guarded). MapGrid passability IS hashed (mutable mid-run since buildings
+    /// version-guarded); SimWorld._swappedThisTick (transient per-tick scratch set, cleared
+    /// at the top of MoveUnits before any state is read — zero net effect on observable state).
+    /// MapGrid passability IS hashed (mutable mid-run since buildings
     /// and node depletion), packed 64 cells per Mix, along with Map.Version.
     /// Patterns for new state: nullable objects need a presence marker before their
     /// fields; never hash collections by iterating a Dictionary (order is undefined).</summary>

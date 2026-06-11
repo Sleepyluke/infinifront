@@ -238,73 +238,12 @@ public sealed partial class SimWorld
                 if (occ != 0 && occ != u.Id)
                 {
                     // Destination cell is occupied by another unit.
-
-                    // --- Head-on swap rule (checked BEFORE arrival relaxation) ---
-                    // If B (the blocker) has a move order and B's next-step cell is A's (u's)
-                    // current cell, the two units are heading directly into each other.
-                    // Allow the pass: swap their positions to their respective target cell centers
-                    // this tick, so they pass through instead of deadlocking forever.
                     var blocker = _byId.TryGetValue(occ, out var bl) ? bl : null;
-                    if (blocker is not null && blocker.HasMoveOrder && !_swappedThisTick.Contains(occ))
-                    {
-                        // Compute blocker's next-step cell from its flow field.
-                        var (bcx, bcy) = Map.WorldToCell(blocker.Position);
-                        var (bdx, bdy) = blocker.Path is not null
-                            ? blocker.Path.DirectionAt(bcx, bcy)
-                            : (0, 0);
-                        if (bdx == 0 && bdy == 0 && blocker.Path is null)
-                        {
-                            // blocker in final-homing phase: target cell is its move-target cell
-                            (bdx, bdy) = (0, 0); // will not trigger swap
-                        }
-                        var (bnx, bny) = (bcx + bdx, bcy + bdy);
-                        if (bnx == cx && bny == cy)
-                        {
-                            // Head-on: A wants B's cell, B wants A's cell → swap.
-                            // Both units move to the other's current cell center.
-                            var aNewPos = Map.CellCenter(bcx, bcy);
-                            var bNewPos = Map.CellCenter(cx, cy);
 
-                            ReleaseCell(cx, cy, u.Id);
-                            ReleaseCell(bcx, bcy, blocker.Id);
-                            ClaimCell(bcx, bcy, u.Id);
-                            ClaimCell(cx, cy, blocker.Id);
+                    if (TryHeadOnSwap(u, blocker, cx, cy, ncx, ncy))
+                        continue;
 
-                            u.Position = aNewPos;
-                            blocker.Position = bNewPos;
-
-                            _swappedThisTick.Add(u.Id);
-                            _swappedThisTick.Add(blocker.Id);
-
-                            // Check arrival for u after the swap
-                            var (ancx, ancy) = Map.WorldToCell(u.Position);
-                            var (attx, atty) = Map.WorldToCell(u.MoveTarget);
-                            if (ancx == attx && ancy == atty)
-                            {
-                                u.HasMoveOrder = false;
-                                u.Path = null;
-                            }
-                            // Check arrival for blocker after the swap
-                            var (bncx, bncy) = Map.WorldToCell(blocker.Position);
-                            var (bttx, btty) = Map.WorldToCell(blocker.MoveTarget);
-                            if (bncx == bttx && bncy == btty)
-                            {
-                                blocker.HasMoveOrder = false;
-                                blocker.Path = null;
-                            }
-                            continue;
-                        }
-                    }
-
-                    // --- Arrival relaxation ---
-                    // When blocked and the contested cell is the move-target cell, treat as arrived.
-                    // Also treat as arrived when the blocker is stationary (no move order) and
-                    // the blocked unit's current cell is adjacent to the contested cell (Chebyshev 1).
-                    var (dtx, dty) = Map.WorldToCell(u.MoveTarget);
-                    bool contestedIsTarget = (ncx == dtx && ncy == dty);
-                    bool blockerStationary = blocker is not null && !blocker.HasMoveOrder;
-                    bool adjacentToContest = System.Math.Abs(cx - ncx) <= 1 && System.Math.Abs(cy - ncy) <= 1;
-                    if (contestedIsTarget || (blockerStationary && adjacentToContest))
+                    if (ShouldRelaxArrival(u, blocker, cx, cy, ncx, ncy))
                     {
                         u.HasMoveOrder = false;
                         u.Path = null;
@@ -323,6 +262,87 @@ public sealed partial class SimWorld
                 u.Path = null;
             }
         }
+    }
+
+    /// <summary>Head-on swap: if the blocker's next-step cell is u's current cell, the two units
+    /// are heading directly into each other. Swap them to avoid permanent deadlock.
+    /// Returns true if the swap was performed (caller should continue to next unit).</summary>
+    private bool TryHeadOnSwap(Unit u, Unit? blocker, int cx, int cy, int ncx, int ncy)
+    {
+        if (blocker is null || !blocker.HasMoveOrder || _swappedThisTick.Contains(blocker.Id))
+            return false;
+
+        var (bcx, bcy) = Map.WorldToCell(blocker.Position);
+        var (bdx, bdy) = blocker.Path is not null
+            ? blocker.Path.DirectionAt(bcx, bcy)
+            : (0, 0);
+        // No swap when blocker has no flow direction (unreachable / final-homing with no step).
+        var (bnx, bny) = (bcx + bdx, bcy + bdy);
+        if (bnx != cx || bny != cy)
+            return false;
+
+        // Head-on: A wants B's cell, B wants A's cell → swap.
+        var aNewPos = Map.CellCenter(bcx, bcy);
+        var bNewPos = Map.CellCenter(cx, cy);
+
+        ReleaseCell(cx, cy, u.Id);
+        ReleaseCell(bcx, bcy, blocker.Id);
+        ClaimCell(bcx, bcy, u.Id);
+        ClaimCell(cx, cy, blocker.Id);
+
+        u.Position = aNewPos;
+        blocker.Position = bNewPos;
+
+        _swappedThisTick.Add(u.Id);
+        _swappedThisTick.Add(blocker.Id);
+
+        // Check arrival for u after the swap
+        var (ancx, ancy) = Map.WorldToCell(u.Position);
+        var (attx, atty) = Map.WorldToCell(u.MoveTarget);
+        if (ancx == attx && ancy == atty) { u.HasMoveOrder = false; u.Path = null; }
+
+        // Check arrival for blocker after the swap
+        var (bncx, bncy) = Map.WorldToCell(blocker.Position);
+        var (bttx, btty) = Map.WorldToCell(blocker.MoveTarget);
+        if (bncx == bttx && bncy == btty) { blocker.HasMoveOrder = false; blocker.Path = null; }
+
+        return true;
+    }
+
+    /// <summary>Arrival relaxation: a unit blocked from its next cell may treat itself as
+    /// arrived early under two specific conditions only — never mid-path.
+    ///
+    /// Rule A — contested cell IS the move-target cell: the unit can't reach its exact
+    ///   destination because it's occupied, so stopping one cell away is correct.
+    ///
+    /// Rule B — shared-destination group arrival: the blocker is stationary AND its
+    ///   current cell is within Chebyshev 1 of the blocked unit's target cell, meaning
+    ///   the blocker has already settled at (or very near) the same goal. The blocked
+    ///   unit is one step away from a cell that is itself right beside the target —
+    ///   continuing to push would just shuffle units around the target cluster.
+    ///
+    /// Crucially, Rule B requires the blocker to be physically at the target cluster
+    /// (Chebyshev 1 of the target), NOT merely that the contested cell is Chebyshev 1
+    /// of u's current cell (which is always true and caused the original bug).
+    /// This prevents any idle unit mid-path from silently killing a move order.</summary>
+    private bool ShouldRelaxArrival(Unit u, Unit? blocker, int cx, int cy, int ncx, int ncy)
+    {
+        var (dtx, dty) = Map.WorldToCell(u.MoveTarget);
+
+        // Rule A: blocked cell is the exact target cell.
+        if (ncx == dtx && ncy == dty) return true;
+
+        // Rule B: blocker is stationary and physically at the target cluster.
+        if (blocker is not null && !blocker.HasMoveOrder)
+        {
+            var (blockerCx, blockerCy) = Map.WorldToCell(blocker.Position);
+            bool blockerAtTargetCluster =
+                System.Math.Abs(blockerCx - dtx) <= 1 &&
+                System.Math.Abs(blockerCy - dty) <= 1;
+            if (blockerAtTargetCluster) return true;
+        }
+
+        return false;
     }
 
     /// <summary>Reverse-index removal preserves survivor order (list order = determinism contract).</summary>
