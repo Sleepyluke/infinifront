@@ -74,4 +74,29 @@ public class BuildingTests
         Assert.True(w.Map.IsPassable(6, 5));
         Assert.True(w.Map.IsPassable(7, 6));
     }
+
+    [Fact]
+    public void Unit_Walking_Through_Site_Reroutes_When_Building_Placed()
+    {
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        w.Players[0].Minerals = 500;
+        // walker heads east along y=5, straight through the future site at (8,5)-(9,6)
+        var walker = w.SpawnUnit(0, w.Map.CellCenter(2, 5), Fix.FromFraction(1, 2), 30);
+        var target = w.Map.CellCenter(15, 5);
+        w.Step(new Command[] { new MoveCommand(0, new[] { walker }, target) });
+
+        // a worker near the site drops a building across the walker's path mid-walk
+        var builderUnit = w.SpawnUnit(0, w.Map.CellCenter(8, 8), Fix.FromFraction(1, 2), 30);
+        for (int i = 0; i < 4; i++) w.Step(System.Array.Empty<Command>());
+        w.Step(new Command[] { new BuildCommand(0, builderUnit, Depot, 8, 5) });
+
+        for (int i = 0; i < 300 && w.GetUnit(walker)!.HasMoveOrder; i++)
+        {
+            w.Step(System.Array.Empty<Command>());
+            var (px, py) = w.Map.WorldToCell(w.GetUnit(walker)!.Position);
+            Assert.True(w.Map.IsPassable(px, py), $"tick {i}: walker inside impassable cell ({px},{py})");
+        }
+        Assert.False(w.GetUnit(walker)!.HasMoveOrder);
+        Assert.Equal(target, w.GetUnit(walker)!.Position);
+    }
 }
