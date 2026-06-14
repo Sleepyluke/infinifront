@@ -8,6 +8,7 @@ public sealed partial class SimWorld
     public MapGrid Map { get; }
     public int Tick { get; private set; }
     public DeterministicRandom Rng { get; }
+    public FactionDef? Faction { get; }
 
     private readonly List<Unit> _units = new(); // stable order — required for determinism
     private readonly Dictionary<int, Unit> _byId = new();
@@ -19,10 +20,11 @@ public sealed partial class SimWorld
     private readonly PlayerState[] _players;
     public System.Collections.Generic.IReadOnlyList<PlayerState> Players => _players;
 
-    public SimWorld(MapGrid map, ulong seed, int playerCount = 2)
+    public SimWorld(MapGrid map, ulong seed, int playerCount = 2, FactionDef? faction = null)
     {
         Map = map;
         Rng = new DeterministicRandom(seed);
+        Faction = faction;
         _players = new PlayerState[playerCount];
         for (int i = 0; i < playerCount; i++) _players[i] = new PlayerState();
     }
