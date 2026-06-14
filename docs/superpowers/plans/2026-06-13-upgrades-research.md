@@ -1106,4 +1106,17 @@ git commit -m "feat: Godot research buttons from the upgrades catalog"
 - Godot builds and offers research buttons.
 - `grep -rni godot src/SimCore` → no hits; no float/double in src/SimCore outside `Fix.ToString()`.
 
-**Next plan (3c):** Faction-mechanic framework + 1 exemplar — a pluggable hook in the deterministic Step loop and one concrete mechanic (e.g. regenerating shields), extending `FactionDef` with a mechanic selector. Carry-forward: the effective-stat accessor pattern and the `Has()`/applied-set machinery are reusable; mechanics that modify stats can reuse `UpgradeDelta`-style read-time computation.
+**Next plan (3c):** Faction-mechanic framework + 1 exemplar — a pluggable hook in the deterministic Step loop and one concrete mechanic (e.g. regenerating shields), extending `FactionDef` with a mechanic selector.
+
+## Plan-3c Inputs (carried forward from 3b final review — STATUS: 3b COMPLETE, merged 2026-06-13, ~210 SimCore tests, golden 6959374437731592347UL)
+
+The seams favor a pluggable mechanic; nothing fights it:
+1. **`Step()` is a clean ordered pipeline** — slot a `UpdateMechanics()` hook in deliberately (likely after UpdateProduction/UpdateResearch, before RemoveDead); hook ordering affects the hash, so choose it consciously and document.
+2. **`FactionDef` additive-ctor precedent** — add a `mechanic` selector via a new ctor overload (as upgrades were added), keeping all existing `FactionDef(...)` call sites compiling.
+3. **`Validate()`** is the home for mechanic referential checks (extend the existing walk).
+4. **StateHasher convention is explicit** — any mechanic-introduced mutable per-player/per-unit state (cooldowns, charges, shield HP) MUST be folded into the hash and the golden re-pinned in the same commit. Per-player mechanic state goes in the `world.Players` hash loop.
+5. **Prefer compute-on-read** (the `UpgradeStat`/`UpgradeDelta` template) for stat-modifying mechanics — keeps retroactivity + hash simplicity, avoids baked per-unit state.
+6. **Reuse `Has()`/`PrerequisitesMet`** if a mechanic gates on tech (building or upgrade).
+7. **Player-triggered mechanics** drop into the sealed-record `Command` + single `Apply()` switch with the guard-then-mutate pattern (mirror `ResearchCommand`).
+
+PROCESS NOTE (cost a recovery in 3b): a background implementer's commit was silently lost (branch advanced from a sibling commit), requiring a cherry-pick of orphaned work. Mitigation adopted: run implementers FOREGROUND (synchronous) and verify `git log` HEAD after each task. Keep doing this for 3c/3d.

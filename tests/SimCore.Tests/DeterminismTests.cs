@@ -12,18 +12,21 @@ public class DeterminismTests
     // If spawn order in Scenario() changes, update this and re-pin the golden constant.
     private const int RaxId = 28;
 
-    /// <summary>Scenario v5: pitched battle (kiters → leash; explicit attack) PLUS a parallel
+    /// <summary>Scenario v6: pitched battle (kiters → leash; explicit attack) PLUS a parallel
     /// economy — build depot + barracks, harvest a node to depletion, train marines mid-run —
     /// PLUS fog verification units: a sniper whose explicit attack on a distant target is
     /// fog-gated at command-application time, and a slow attacker whose chase-drop fires as
     /// the fast runner escapes beyond sight. Both fog branches diverge vs FogEnabled=false,
     /// proving fog code executes under the golden hash net.
     ///
-    /// New in v5:
+    /// Earlier additions:
     ///   t=2   Defend stance on sniper (id 23) + slow_attacker (id 25) — fog combat units
     ///   t=60  Patrol on slow_attacker (id 25) from (2,25)→(2,32) — south of fog corridor, legs swap
     ///   t=245 SetRallyCommand on rax (id 28) → (25,15) — marines trained at t=250 rally there
-    ///   t=400 DestroyCommand on sniper (id 23) — fighting sniperTarget (200hp at range 6), alive at t=399</summary>
+    ///   t=400 DestroyCommand on sniper (id 23) — fighting sniperTarget (200hp at range 6), alive at t=399
+    /// New in v6:
+    ///   t=300 ResearchCommand on rax → "dmg1" (+3 damage, target *) — applies ~t=320,
+    ///         retroactively boosting all player-0 units inside the golden trajectory.</summary>
     private static (SimWorld world, Dictionary<int, List<Command>> script) Scenario()
     {
         var map = new MapGrid(40, 40);
