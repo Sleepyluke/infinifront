@@ -10,13 +10,13 @@ public class HarvestTests
 
     private static (SimWorld w, int worker, int nodeId) EconomyWorld()
     {
-        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1, faction: TestFactions.Standard);
         w.Players[0].Minerals = 200;
         w.Players[0].SupplyCap = 10;
         var nodeId = w.AddResourceNode(12, 5, amount: 12);
         var worker = w.SpawnUnit(0, w.Map.CellCenter(5, 5), WorkerSpec);
         // completed depot at (3,4): place + finish construction
-        w.Step(new Command[] { new BuildCommand(0, worker, BuildingTests.Depot, 3, 4) });
+        w.Step(new Command[] { new BuildCommand(0, worker, "depot", 3, 4) });
         for (int i = 0; i < BuildingTests.Depot.BuildTimeTicks; i++) w.Step(System.Array.Empty<Command>());
         return (w, worker, nodeId);
     }

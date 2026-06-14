@@ -28,7 +28,21 @@ public class DeterminismTests
     {
         var map = new MapGrid(40, 40);
         for (int y = 5; y < 35; y++) map.SetPassable(20, y, false);
-        var w = new SimWorld(map, seed: 1234);
+
+        var depotSpec = new BuildingSpec(100, 2, 2, 100, BuildTimeTicks: 30, SupplyProvided: 8, IsDepot: true);
+        var raxSpec = new BuildingSpec(150, 2, 2, 150, BuildTimeTicks: 40, CanTrain: true);
+        var marineSpec = new UnitSpec(40, Fix.FromFraction(1, 2), 50, 1, 25,
+            Weapon: new WeaponSpec(6, Fix.FromInt(2), 5));
+
+        var scenarioFaction = new FactionDef("scenario", "Scenario",
+            units: new[] { new UnitDef("marine", 1, "rax", System.Array.Empty<string>(), marineSpec) },
+            buildings: new[]
+            {
+                new BuildingDef("depot", 1, System.Array.Empty<string>(), depotSpec),
+                new BuildingDef("rax", 1, System.Array.Empty<string>(), raxSpec),
+            });
+
+        var w = new SimWorld(map, seed: 1234, faction: scenarioFaction);
         w.Players[0].Minerals = 400;
         w.Players[1].Minerals = 400;
 
@@ -46,11 +60,6 @@ public class DeterminismTests
             Harvester: new HarvesterSpec(CarryCapacity: 5, GatherTicks: 4));
         var worker = w.SpawnUnit(0, w.Map.CellCenter(8, 10), workerSpec);
         w.Players[0].SupplyCap = 4; // headroom for worker + first marine before depot completes
-
-        var depotSpec = new BuildingSpec(100, 2, 2, 100, BuildTimeTicks: 30, SupplyProvided: 8, IsDepot: true);
-        var raxSpec = new BuildingSpec(150, 2, 2, 150, BuildTimeTicks: 40, CanTrain: true);
-        var marineSpec = new UnitSpec(40, Fix.FromFraction(1, 2), 50, 1, 25,
-            Weapon: new WeaponSpec(6, Fix.FromInt(2), 5));
 
         // ── v4b fog units (IDs 23-26, appended after base units) ─────────────────────────────
         // Sniper (p0, id=23): long-range weapon (Range=6). Placed left of wall at (2,20).
@@ -87,7 +96,7 @@ public class DeterminismTests
             [0] = new()
             {
                 new MoveCommand(0, Owned(0), w.Map.CellCenter(35, 35)),
-                new BuildCommand(0, worker, depotSpec, 7, 11),       // worker at (8,10) is in range
+                new BuildCommand(0, worker, "depot", 7, 11),       // worker at (8,10) is in range
                 new HarvestCommand(0, new[] { worker }, nodeId),     // harvest while depot builds
             },
             // v5 new: Defend stance on sniper (23) + slow_attacker (25).
@@ -124,7 +133,7 @@ public class DeterminismTests
             {
                 new PatrolCommand(0, new[] { slowAttackerId }, w.Map.CellCenter(2, 32)),
             },
-            [80] = new() { new BuildCommand(0, worker, raxSpec, 11, 9) }, // ignored if worker out of range — deterministic either way
+            [80] = new() { new BuildCommand(0, worker, "rax", 11, 9) }, // ignored if worker out of range — deterministic either way
             // v4a: collision phase — opposing squads through the top gap (x=20, y=0..4)
             // Player-0 subset crosses left→right; player-1 subset crosses right→left.
             // Head-on traffic through the 5-cell gap exercises queueing + head-on swaps.

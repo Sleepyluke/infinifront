@@ -4,8 +4,7 @@ using Xunit;
 
 public class ProductionTests
 {
-    private static readonly BuildingSpec Barracks =
-        new(MaxHp: 150, Width: 2, Height: 2, MineralCost: 150, BuildTimeTicks: 5, CanTrain: true);
+    private static readonly BuildingSpec Barracks = TestFactions.BarracksSpec;
 
     private static readonly UnitSpec Marine =
         new(MaxHp: 40, Speed: Fix.FromFraction(1, 2), MineralCost: 50, SupplyCost: 1, BuildTimeTicks: 8,
@@ -13,11 +12,11 @@ public class ProductionTests
 
     private static (SimWorld w, int barracksId) ReadyWorld()
     {
-        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1, faction: TestFactions.Standard);
         w.Players[0].Minerals = 1000;
         w.Players[0].SupplyCap = 10;
         var worker = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 30);
-        w.Step(new Command[] { new BuildCommand(0, worker, Barracks, 7, 5) });
+        w.Step(new Command[] { new BuildCommand(0, worker, "barracks", 7, 5) });
         for (int i = 0; i < Barracks.BuildTimeTicks; i++) w.Step(System.Array.Empty<Command>());
         return (w, w.Buildings[0].Id);
     }
@@ -70,11 +69,11 @@ public class ProductionTests
     [Fact]
     public void Incomplete_Or_NonTrainer_Building_Rejects_Train()
     {
-        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1, faction: TestFactions.Standard);
         w.Players[0].Minerals = 1000;
         w.Players[0].SupplyCap = 10;
         var worker = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 30);
-        w.Step(new Command[] { new BuildCommand(0, worker, Barracks, 7, 5) });
+        w.Step(new Command[] { new BuildCommand(0, worker, "barracks", 7, 5) });
         var bid = w.Buildings[0].Id; // still under construction
         w.Step(new Command[] { new TrainCommand(0, bid, Marine) });
         Assert.Empty(w.GetBuilding(bid)!.Queue);

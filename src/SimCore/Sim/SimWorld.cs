@@ -166,14 +166,17 @@ public sealed partial class SimWorld
                 }
                 break;
             case BuildCommand bc:
+                var bdef = Faction?.GetBuilding(bc.BuildingDefId);
+                if (bdef is null) break; // unknown def id (or no faction) — reject
                 var builder = GetUnit(bc.WorkerUnitId);
                 if (builder is null || builder.OwnerId != bc.PlayerId) break;
-                if (_players[bc.PlayerId].Minerals < bc.Spec.MineralCost) break;
-                var siteCenter = FootprintCenter(bc.CellX, bc.CellY, bc.Spec.Width, bc.Spec.Height);
-                if ((builder.Position - siteCenter).LengthSquared() > Fix.FromInt(16)) break; // worker within 4 of site center
-                if (!FootprintPlaceable(bc.CellX, bc.CellY, bc.Spec.Width, bc.Spec.Height)) break;
-                _players[bc.PlayerId].Minerals -= bc.Spec.MineralCost;
-                PlaceBuilding(bc.PlayerId, bc.Spec, bc.CellX, bc.CellY);
+                if (!PrerequisitesMet(bc.PlayerId, bdef.Requires)) break;
+                if (_players[bc.PlayerId].Minerals < bdef.Spec.MineralCost) break;
+                var siteCenter = FootprintCenter(bc.CellX, bc.CellY, bdef.Spec.Width, bdef.Spec.Height);
+                if ((builder.Position - siteCenter).LengthSquared() > Fix.FromInt(16)) break; // within 4 of site center
+                if (!FootprintPlaceable(bc.CellX, bc.CellY, bdef.Spec.Width, bdef.Spec.Height)) break;
+                _players[bc.PlayerId].Minerals -= bdef.Spec.MineralCost;
+                PlaceBuilding(bc.PlayerId, bdef.Spec, bc.CellX, bc.CellY);
                 break;
             case TrainCommand tc:
                 var trainer = GetBuilding(tc.BuildingId);
@@ -294,6 +297,29 @@ public sealed partial class SimWorld
                 }
                 break;
         }
+    }
+
+    /// <summary>True if the player owns ≥1 complete building of every required def id.
+    /// A placed building is matched to its def by reference-equality of its Spec instance
+    /// (PlaceBuilding stores the def's Spec). Holds because Apply passes bdef.Spec to PlaceBuilding.</summary>
+    private bool PrerequisitesMet(int playerId, IReadOnlyList<string> requires)
+    {
+        if (requires.Count == 0) return true;
+        if (Faction is null) return false;
+        foreach (var reqId in requires)
+        {
+            var reqDef = Faction.GetBuilding(reqId);
+            if (reqDef is null) return false;
+            bool owned = false;
+            foreach (var b in _buildings)
+                if (b.OwnerId == playerId && b.IsComplete && ReferenceEquals(b.Spec, reqDef.Spec))
+                {
+                    owned = true;
+                    break;
+                }
+            if (!owned) return false;
+        }
+        return true;
     }
 
     // Per-tick set of unit ids that have already been moved by a head-on swap this tick.

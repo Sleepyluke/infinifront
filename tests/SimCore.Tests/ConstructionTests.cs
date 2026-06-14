@@ -6,10 +6,10 @@ public class ConstructionTests
 {
     private static (SimWorld w, int buildingId) PlacedDepot()
     {
-        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1, faction: TestFactions.Standard);
         w.Players[0].Minerals = 500;
         var worker = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 30);
-        w.Step(new Command[] { new BuildCommand(0, worker, BuildingTests.Depot, 6, 5) });
+        w.Step(new Command[] { new BuildCommand(0, worker, "depot", 6, 5) });
         return (w, w.Buildings[0].Id);
     }
 

@@ -4,18 +4,17 @@ using Xunit;
 
 public class BuildingCombatTests
 {
-    private static readonly BuildingSpec Hut =
-        new(MaxHp: 30, Width: 2, Height: 2, MineralCost: 50, BuildTimeTicks: 1);
+    private static readonly BuildingSpec Hut = TestFactions.HutSpec;
 
     private static Weapon TestWeapon() =>
         new() { Damage = 10, Range = Fix.FromInt(3), CooldownTicks = 2 };
 
     private static (SimWorld w, int hutId) WorldWithEnemyHut()
     {
-        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1, faction: TestFactions.Standard);
         w.Players[1].Minerals = 100;
         var enemyWorker = w.SpawnUnit(1, w.Map.CellCenter(10, 10), Fix.FromFraction(1, 2), 30);
-        w.Step(new Command[] { new BuildCommand(1, enemyWorker, Hut, 10, 11) });
+        w.Step(new Command[] { new BuildCommand(1, enemyWorker, "hut", 10, 11) });
         w.Step(System.Array.Empty<Command>()); // completes (BuildTimeTicks 1)
         w.GetUnit(enemyWorker)!.Hp = 0;
         w.Step(System.Array.Empty<Command>()); // remove worker
@@ -59,10 +58,10 @@ public class BuildingCombatTests
     [Fact]
     public void Cannot_Attack_Own_Building()
     {
-        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1, faction: TestFactions.Standard);
         w.Players[0].Minerals = 100;
         var worker = w.SpawnUnit(0, w.Map.CellCenter(10, 10), Fix.FromFraction(1, 2), 30, TestWeapon());
-        w.Step(new Command[] { new BuildCommand(0, worker, Hut, 10, 11) });
+        w.Step(new Command[] { new BuildCommand(0, worker, "hut", 10, 11) });
         var bid = w.Buildings[0].Id;
         w.Step(new Command[] { new AttackCommand(0, new[] { worker }, bid) });
         Assert.Equal(0, w.GetUnit(worker)!.AttackTargetId);
