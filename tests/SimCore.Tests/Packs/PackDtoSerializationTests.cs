@@ -73,4 +73,18 @@ public class PackDtoSerializationTests
         Assert.Contains("\"producedBy\"", json);
         Assert.DoesNotContain("\"MaxHp\"", json);
     }
+
+    [Fact]
+    public void Zero_sight_range_round_trips_losslessly()
+    {
+        var u = new UnitDto("u", 1, "b", null, 10, Fix.One, 1, 1, 1, SightRange: 0);
+        var ru = JsonSerializer.Deserialize<UnitDto>(
+            JsonSerializer.Serialize(u, PackJson.Options), PackJson.Options)!;
+        Assert.Equal(0, ru.SightRange);
+
+        var b = new BuildingDto("b", 1, null, 10, 1, 1, 1, 1, SightRange: 0);
+        var rb = JsonSerializer.Deserialize<BuildingDto>(
+            JsonSerializer.Serialize(b, PackJson.Options), PackJson.Options)!;
+        Assert.Equal(0, rb.SightRange);
+    }
 }

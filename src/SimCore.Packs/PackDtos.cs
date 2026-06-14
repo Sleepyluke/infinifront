@@ -18,7 +18,10 @@ public sealed record FactionPackDto(
 public sealed record UnitDto(
     string Id, int Tier, string ProducedBy, IReadOnlyList<string>? Requires,
     int MaxHp, Fix Speed, int MineralCost, int SupplyCost, int BuildTimeTicks,
-    int SightRange = 7, WeaponDto? Weapon = null, HarvesterDto? Harvester = null);
+    // Always write SightRange even when 0: its ctor default is non-zero (7), so under the
+    // global WhenWritingDefault policy a 0 would be omitted and wrongly restored to 7 on read.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int SightRange = 7,
+    WeaponDto? Weapon = null, HarvesterDto? Harvester = null);
 
 public sealed record WeaponDto(int Damage, Fix Range, int CooldownTicks);
 
@@ -27,7 +30,9 @@ public sealed record HarvesterDto(int CarryCapacity, int GatherTicks);
 public sealed record BuildingDto(
     string Id, int Tier, IReadOnlyList<string>? Requires,
     int MaxHp, int Width, int Height, int MineralCost, int BuildTimeTicks,
-    int SupplyProvided = 0, bool IsDepot = false, bool CanTrain = false, int SightRange = 8);
+    int SupplyProvided = 0, bool IsDepot = false, bool CanTrain = false,
+    // Always write SightRange even when 0 (ctor default is 8); see UnitDto.SightRange.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int SightRange = 8);
 
 public sealed record UpgradeDto(
     string Id, int Tier, string ResearchedAt, IReadOnlyList<string>? Requires,
