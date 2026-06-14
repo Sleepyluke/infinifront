@@ -12,4 +12,15 @@ public sealed partial class SimWorld
     /// <summary>Initial shield pool for a unit spawned under the current faction.</summary>
     private int InitialShield() =>
         Faction?.Mechanic is { Kind: MechanicKind.RegeneratingShields } m ? m.MaxShield : 0;
+
+    /// <summary>Applies combat damage to a unit, shield-first. Resets the damage timer
+    /// so shield regen pauses. Works uniformly: a unit with no shields has ShieldHp 0,
+    /// so all damage goes to Hp (identical to direct subtraction).</summary>
+    private static void ApplyDamage(Unit target, int amount)
+    {
+        int toShield = System.Math.Min(target.ShieldHp, amount);
+        target.ShieldHp -= toShield;
+        target.Hp -= (amount - toShield);
+        target.TicksSinceDamaged = 0;
+    }
 }

@@ -174,7 +174,7 @@ public sealed partial class SimWorld
                 u.Path = null;
                 if (u.Weapon.CooldownRemaining == 0)
                 {
-                    if (targetUnit is not null) targetUnit.Hp -= EffectiveDamage(u);
+                    if (targetUnit is not null) ApplyDamage(targetUnit, EffectiveDamage(u));
                     else targetBuilding!.Hp -= EffectiveDamage(u);
                     u.Weapon.CooldownRemaining = EffectiveCooldownTicks(u);
                 }
