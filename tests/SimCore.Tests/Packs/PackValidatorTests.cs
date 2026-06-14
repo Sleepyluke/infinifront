@@ -1,0 +1,50 @@
+using System.Collections.Generic;
+using System.Linq;
+using SimCore.Math;
+using SimCore.Packs;
+using SimCore.Sim;
+
+namespace SimCore.Tests.Packs;
+
+public class PackValidatorTests
+{
+    private static readonly string[] None = System.Array.Empty<string>();
+
+    private static UnitDef Unit(string id, string producedBy, IReadOnlyList<string>? requires = null,
+        int tier = 1, UnitSpec? spec = null) =>
+        new(id, tier, producedBy, requires ?? None, spec ?? new UnitSpec(50, Fix.One, 50, 1, 50));
+
+    private static BuildingDef Bld(string id, IReadOnlyList<string>? requires = null, int tier = 1) =>
+        new(id, tier, requires ?? None, new BuildingSpec(100, 2, 2, 100, 100));
+
+    private static bool Has(IReadOnlyList<ValidationFinding> fs, string code, string? target = null) =>
+        fs.Any(f => f.Code == code && (target == null || f.TargetId == target));
+
+    [Fact]
+    public void Reference_faction_has_no_errors()
+    {
+        var findings = PackValidator.Validate(ReferenceFaction.Def);
+        Assert.DoesNotContain(findings, f => f.Severity == Severity.Error);
+    }
+
+    [Fact]
+    public void No_buildings_is_an_error()
+    {
+        var f = new FactionDef("x", "X", new[] { Unit("u", "ghost") }, System.Array.Empty<BuildingDef>());
+        Assert.True(Has(PackValidator.Validate(f), "NO_BUILDINGS"));
+    }
+
+    [Fact]
+    public void No_units_is_an_error()
+    {
+        var f = new FactionDef("x", "X", System.Array.Empty<UnitDef>(), new[] { Bld("hq") });
+        Assert.True(Has(PackValidator.Validate(f), "NO_UNITS"));
+    }
+
+    [Fact]
+    public void Blank_unit_id_is_an_error()
+    {
+        var f = new FactionDef("x", "X", new[] { Unit("  ", "hq") }, new[] { Bld("hq") });
+        Assert.True(Has(PackValidator.Validate(f), "ID_BLANK"));
+    }
+}
