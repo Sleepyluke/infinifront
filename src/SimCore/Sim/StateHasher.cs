@@ -15,6 +15,8 @@ public static class StateHasher
     /// SimWorld._occupancy (derived from unit positions — incrementally maintained via claim/release, excluded as a cache);
     /// SimWorld._visible/_explored (derived from unit/building positions+specs every tick — excluded);
     /// SimWorld.FogEnabled (debug-only toggle; never toggled mid-match in any lockstep context).
+    /// Building.DefId is excluded: a derived static label (1:1 with the already-hashed building
+    /// spec fields; set at placement and never varies during a match).
     /// MapGrid passability IS hashed (mutable mid-run since buildings
     /// and node depletion), packed 64 cells per Mix, along with Map.Version.
     /// Patterns for new state: nullable objects need a presence marker before their

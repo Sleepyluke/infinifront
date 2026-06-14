@@ -9,6 +9,7 @@ public sealed class Building
     public int OwnerId { get; init; }
     public int CellX { get; init; }
     public int CellY { get; init; }
+    public string DefId { get; init; } = "";
     public BuildingSpec Spec { get; init; } = null!;
     public int Hp { get; set; }
     public bool IsComplete { get; set; }

@@ -28,9 +28,9 @@ public sealed partial class SimWorld
         return true;
     }
 
-    internal int PlaceBuilding(int ownerId, BuildingSpec spec, int cellX, int cellY)
+    internal int PlaceBuilding(int ownerId, BuildingSpec spec, int cellX, int cellY, string defId = "")
     {
-        var b = new Building { Id = _nextId++, OwnerId = ownerId, CellX = cellX, CellY = cellY, Spec = spec, Hp = spec.MaxHp };
+        var b = new Building { Id = _nextId++, OwnerId = ownerId, CellX = cellX, CellY = cellY, DefId = defId, Spec = spec, Hp = spec.MaxHp };
         _buildings.Add(b);
         _buildingsById[b.Id] = b;
         for (int y = cellY; y < cellY + spec.Height; y++)
@@ -42,9 +42,9 @@ public sealed partial class SimWorld
     /// <summary>Setup-time API (map generation): place a building already
     /// completed — full Hp, IsComplete, supply granted. Mirrors the
     /// UpdateConstruction completion path. Not reachable via commands.</summary>
-    public int AddCompletedBuilding(int ownerId, BuildingSpec spec, int cellX, int cellY)
+    public int AddCompletedBuilding(int ownerId, BuildingSpec spec, int cellX, int cellY, string defId = "")
     {
-        var id = PlaceBuilding(ownerId, spec, cellX, cellY);
+        var id = PlaceBuilding(ownerId, spec, cellX, cellY, defId);
         var b = _buildingsById[id];
         b.IsComplete = true;
         b.Hp = spec.MaxHp;

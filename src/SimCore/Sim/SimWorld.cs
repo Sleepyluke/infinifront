@@ -176,7 +176,7 @@ public sealed partial class SimWorld
                 if ((builder.Position - siteCenter).LengthSquared() > Fix.FromInt(16)) break; // within 4 of site center
                 if (!FootprintPlaceable(bc.CellX, bc.CellY, bdef.Spec.Width, bdef.Spec.Height)) break;
                 _players[bc.PlayerId].Minerals -= bdef.Spec.MineralCost;
-                PlaceBuilding(bc.PlayerId, bdef.Spec, bc.CellX, bc.CellY);
+                PlaceBuilding(bc.PlayerId, bdef.Spec, bc.CellX, bc.CellY, bc.BuildingDefId);
                 break;
             case TrainCommand tc:
                 var trainer = GetBuilding(tc.BuildingId);
@@ -300,23 +300,16 @@ public sealed partial class SimWorld
     }
 
     /// <summary>True if the player owns ≥1 complete building of every required def id.
-    /// A placed building is matched to its def by reference-equality of its Spec instance
-    /// (PlaceBuilding stores the def's Spec). Holds because Apply passes bdef.Spec to PlaceBuilding.</summary>
+    /// Buildings are identified by their stored DefId (set at placement) — robust to
+    /// spec instances being reconstructed (e.g. JSON-loaded packs in plan 3d).</summary>
     private bool PrerequisitesMet(int playerId, IReadOnlyList<string> requires)
     {
         if (requires.Count == 0) return true;
-        if (Faction is null) return false;
         foreach (var reqId in requires)
         {
-            var reqDef = Faction.GetBuilding(reqId);
-            if (reqDef is null) return false;
             bool owned = false;
             foreach (var b in _buildings)
-                if (b.OwnerId == playerId && b.IsComplete && ReferenceEquals(b.Spec, reqDef.Spec))
-                {
-                    owned = true;
-                    break;
-                }
+                if (b.OwnerId == playerId && b.IsComplete && b.DefId == reqId) { owned = true; break; }
             if (!owned) return false;
         }
         return true;
