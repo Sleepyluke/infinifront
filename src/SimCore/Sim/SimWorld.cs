@@ -303,20 +303,21 @@ public sealed partial class SimWorld
         }
     }
 
-    /// <summary>True if the player owns ≥1 complete building of every required def id.
-    /// Buildings are identified by their stored DefId (set at placement) — robust to
-    /// spec instances being reconstructed (e.g. JSON-loaded packs in plan 3d).</summary>
     private bool PrerequisitesMet(int playerId, IReadOnlyList<string> requires)
     {
         if (requires.Count == 0) return true;
         foreach (var reqId in requires)
-        {
-            bool owned = false;
-            foreach (var b in _buildings)
-                if (b.OwnerId == playerId && b.IsComplete && b.DefId == reqId) { owned = true; break; }
-            if (!owned) return false;
-        }
+            if (!Has(playerId, reqId)) return false;
         return true;
+    }
+
+    /// <summary>A prerequisite id is satisfied by owning a completed building of that DefId
+    /// OR by having applied an upgrade of that id.</summary>
+    private bool Has(int playerId, string reqId)
+    {
+        foreach (var b in _buildings)
+            if (b.OwnerId == playerId && b.IsComplete && b.DefId == reqId) return true;
+        return _players[playerId].HasUpgrade(reqId);
     }
 
     // Per-tick set of unit ids that have already been moved by a head-on swap this tick.
