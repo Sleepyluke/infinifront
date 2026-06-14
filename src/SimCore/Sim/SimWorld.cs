@@ -364,6 +364,7 @@ public sealed partial class SimWorld
             if (!u.HasMoveOrder) continue;
             if (_swappedThisTick.Contains(u.Id)) continue; // already moved by a swap this tick
 
+            var spd = EffectiveSpeed(u);
             var (cx, cy) = Map.WorldToCell(u.Position);
             var (ttx, tty) = Map.WorldToCell(u.MoveTarget);
 
@@ -394,13 +395,13 @@ public sealed partial class SimWorld
 
             var dist = step.Length();
             FixVec newPos;
-            if (dist <= u.SpeedPerTick)
+            if (dist <= spd)
             {
                 newPos = u.Position + step;
             }
             else
             {
-                newPos = u.Position + step.Normalized() * u.SpeedPerTick;
+                newPos = u.Position + step.Normalized() * spd;
             }
 
             // Cell-crossing check: if moving into a new cell, verify it is unoccupied.

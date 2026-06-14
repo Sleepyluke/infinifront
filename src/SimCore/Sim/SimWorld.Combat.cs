@@ -34,7 +34,7 @@ public sealed partial class SimWorld
             // Attack-move: acquire a target, or resume/finish the march.
             if (u.IsAttackMoving && u.Weapon is not null && u.AttackTargetId == 0)
             {
-                var acquired = AcquireTarget(u, u.Weapon.Range + AcquireBonus);
+                var acquired = AcquireTarget(u, EffectiveRange(u) + AcquireBonus);
                 if (acquired != 0)
                 {
                     u.AttackTargetId = acquired;
@@ -112,7 +112,7 @@ public sealed partial class SimWorld
             if (!u.IsAttackMoving && !u.HasMoveOrder && u.HarvestPhase == HarvestPhase.None
                 && u.Weapon is not null && u.AttackTargetId == 0 && u.Stance != Stance.Passive)
             {
-                var acquired = AcquireTarget(u, u.Weapon.Range + AcquireBonus);
+                var acquired = AcquireTarget(u, EffectiveRange(u) + AcquireBonus);
                 if (acquired != 0)
                 {
                     u.AttackTargetId = acquired;
@@ -150,7 +150,7 @@ public sealed partial class SimWorld
             // (explicit AttackCommand orders have no leash — the player asked for that chase).
             if (u.IsAttackMoving)
             {
-                var leash = u.Weapon.Range + LeashBonus;
+                var leash = EffectiveRange(u) + LeashBonus;
                 if (delta.LengthSquared() > leash * leash) { u.AttackTargetId = 0; continue; }
             }
 
@@ -158,7 +158,7 @@ public sealed partial class SimWorld
             // anchor + Range + LeashBonus (measured from anchor, not current position).
             if (u.HasAnchor)
             {
-                var leash = u.Weapon.Range + LeashBonus;
+                var leash = EffectiveRange(u) + LeashBonus;
                 if ((targetPos - u.Anchor).LengthSquared() > leash * leash)
                 {
                     u.AttackTargetId = 0;
@@ -167,15 +167,16 @@ public sealed partial class SimWorld
                 }
             }
 
-            if (delta.LengthSquared() <= u.Weapon.Range * u.Weapon.Range)
+            var effRange = EffectiveRange(u);
+            if (delta.LengthSquared() <= effRange * effRange)
             {
                 u.HasMoveOrder = false;
                 u.Path = null;
                 if (u.Weapon.CooldownRemaining == 0)
                 {
-                    if (targetUnit is not null) targetUnit.Hp -= u.Weapon.Damage;
-                    else targetBuilding!.Hp -= u.Weapon.Damage;
-                    u.Weapon.CooldownRemaining = u.Weapon.CooldownTicks;
+                    if (targetUnit is not null) targetUnit.Hp -= EffectiveDamage(u);
+                    else targetBuilding!.Hp -= EffectiveDamage(u);
+                    u.Weapon.CooldownRemaining = EffectiveCooldownTicks(u);
                 }
             }
             else

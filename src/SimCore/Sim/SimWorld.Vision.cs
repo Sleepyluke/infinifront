@@ -32,7 +32,7 @@ public sealed partial class SimWorld
         foreach (var u in _units)
         {
             var (cx, cy) = Map.WorldToCell(u.Position);
-            Stamp(u.OwnerId, cx, cy, u.SightRange);
+            Stamp(u.OwnerId, cx, cy, EffectiveSight(u));
         }
         foreach (var b in _buildings)
             Stamp(b.OwnerId, b.CellX + b.Spec.Width / 2, b.CellY + b.Spec.Height / 2, b.Spec.SightRange);
