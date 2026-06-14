@@ -15,14 +15,13 @@ public sealed partial class SimWorld
 
     internal FixVec CenterOf(Building b) => FootprintCenter(b.CellX, b.CellY, b.Spec.Width, b.Spec.Height);
 
-    private bool FootprintPlaceable(int cellX, int cellY, int width, int height, int excludeUnitId = 0)
+    private bool FootprintPlaceable(int cellX, int cellY, int width, int height)
     {
         for (int y = cellY; y < cellY + height; y++)
             for (int x = cellX; x < cellX + width; x++)
                 if (!Map.IsPassable(x, y)) return false;
         foreach (var u in _units)
         {
-            if (u.Id == excludeUnitId) continue;
             var (ux, uy) = Map.WorldToCell(u.Position);
             if (ux >= cellX && ux < cellX + width && uy >= cellY && uy < cellY + height) return false;
         }

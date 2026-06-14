@@ -49,7 +49,8 @@ public class ResearchTests
     {
         var (w, rax) = ReadyRax();
         var worker = w.SpawnUnit(0, w.Map.CellCenter(15, 15), Fix.FromFraction(1, 2), 30);
-        w.Step(new Command[] { new BuildCommand(0, worker, "depot", 14, 14) });
+        // depot at (16,16): footprint (16,16)-(17,17) is off the worker's cell (15,15) but in build range
+        w.Step(new Command[] { new BuildCommand(0, worker, "depot", 16, 16) });
         for (int i = 0; i < 3; i++) w.Step(System.Array.Empty<Command>());
         var depot = w.Buildings[^1].Id;
         w.Step(new Command[] { new ResearchCommand(0, depot, "dmg1") });

@@ -175,7 +175,7 @@ public sealed partial class SimWorld
                 if (_players[bc.PlayerId].Minerals < bdef.Spec.MineralCost) break;
                 var siteCenter = FootprintCenter(bc.CellX, bc.CellY, bdef.Spec.Width, bdef.Spec.Height);
                 if ((builder.Position - siteCenter).LengthSquared() > Fix.FromInt(16)) break; // within 4 of site center
-                if (!FootprintPlaceable(bc.CellX, bc.CellY, bdef.Spec.Width, bdef.Spec.Height, bc.WorkerUnitId)) break;
+                if (!FootprintPlaceable(bc.CellX, bc.CellY, bdef.Spec.Width, bdef.Spec.Height)) break;
                 _players[bc.PlayerId].Minerals -= bdef.Spec.MineralCost;
                 PlaceBuilding(bc.PlayerId, bdef.Spec, bc.CellX, bc.CellY, bc.BuildingDefId);
                 break;
