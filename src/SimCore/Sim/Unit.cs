@@ -39,6 +39,9 @@ public sealed class Unit
     public bool IsPatrolling { get; set; }
     public FixVec PatrolA { get; set; }
     public FixVec PatrolB { get; set; }
+
+    public int ShieldHp { get; set; }
+    public int TicksSinceDamaged { get; set; }
 }
 
 public enum HarvestPhase : byte { None = 0, MovingToNode = 1, Gathering = 2, Returning = 3 }
