@@ -63,30 +63,46 @@ public sealed class FactionDef
                 if (GetBuilding(req) is null)
                     errors.Add($"building '{b.Id}' requires unknown building '{req}'");
 
-        // Cycle detection over the building-prerequisite graph (DFS, three-color).
+        foreach (var up in UpgradeList)
+        {
+            if (GetBuilding(up.ResearchedAt) is null)
+                errors.Add($"upgrade '{up.Id}' ResearchedAt references unknown building '{up.ResearchedAt}'");
+            foreach (var req in up.Requires)
+                if (GetBuilding(req) is null && GetUpgrade(req) is null)
+                    errors.Add($"upgrade '{up.Id}' requires unknown building/upgrade '{req}'");
+            foreach (var t in up.TargetUnitDefIds)
+                if (t != "*" && GetUnit(t) is null)
+                    errors.Add($"upgrade '{up.Id}' targets unknown unit '{t}'");
+        }
+
+        // Combined prerequisite cycle detection over buildings + upgrades.
         var state = new Dictionary<string, int>(); // 0=unvisited,1=in-stack,2=done
+        IReadOnlyList<string> RequiresOf(string id)
+        {
+            var b = GetBuilding(id);
+            if (b is not null) return b.Requires;
+            var up = GetUpgrade(id);
+            if (up is not null) return up.Requires;
+            return System.Array.Empty<string>();
+        }
+        bool Resolves(string id) => GetBuilding(id) is not null || GetUpgrade(id) is not null;
         bool HasCycle(string id)
         {
-            if (state.TryGetValue(id, out var s))
-            {
-                if (s == 1) return true;
-                if (s == 2) return false;
-            }
+            if (state.TryGetValue(id, out var s)) { if (s == 1) return true; if (s == 2) return false; }
             state[id] = 1;
-            var b = GetBuilding(id);
-            if (b is not null)
-                foreach (var req in b.Requires)
-                    if (GetBuilding(req) is not null && HasCycle(req))
-                        return true;
+            foreach (var req in RequiresOf(id))
+                if (Resolves(req) && HasCycle(req)) return true;
             state[id] = 2;
             return false;
         }
+        bool cycleFound = false;
         foreach (var b in BuildingList)
-            if (state.GetValueOrDefault(b.Id) == 0 && HasCycle(b.Id))
-            {
-                errors.Add($"building prerequisite cycle detected involving '{b.Id}'");
-                break; // one cycle report is enough
-            }
+            if (state.GetValueOrDefault(b.Id) == 0 && HasCycle(b.Id)) { cycleFound = true; break; }
+        if (!cycleFound)
+            foreach (var up in UpgradeList)
+                if (state.GetValueOrDefault(up.Id) == 0 && HasCycle(up.Id)) { cycleFound = true; break; }
+        if (cycleFound)
+            errors.Add("prerequisite cycle detected");
 
         return errors;
     }
