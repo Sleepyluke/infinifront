@@ -30,6 +30,56 @@ public sealed class FactionDef
 
     public UnitDef? GetUnit(string id) => _units.TryGetValue(id, out var u) ? u : null;
     public BuildingDef? GetBuilding(string id) => _buildings.TryGetValue(id, out var b) ? b : null;
+
+    /// <summary>Referential integrity + cycle detection. Returns human-readable errors
+    /// (empty = valid). Seed of the plan-3d pack validator; budget/structural rules are NOT here.</summary>
+    public IReadOnlyList<string> Validate()
+    {
+        var errors = new List<string>();
+
+        foreach (var u in UnitList)
+        {
+            if (string.IsNullOrEmpty(u.ProducedBy))
+                errors.Add($"unit '{u.Id}' has no producer (ProducedBy is empty)");
+            else if (GetBuilding(u.ProducedBy) is null)
+                errors.Add($"unit '{u.Id}' ProducedBy references unknown building '{u.ProducedBy}'");
+            foreach (var req in u.Requires)
+                if (GetBuilding(req) is null)
+                    errors.Add($"unit '{u.Id}' requires unknown building '{req}'");
+        }
+
+        foreach (var b in BuildingList)
+            foreach (var req in b.Requires)
+                if (GetBuilding(req) is null)
+                    errors.Add($"building '{b.Id}' requires unknown building '{req}'");
+
+        // Cycle detection over the building-prerequisite graph (DFS, three-color).
+        var state = new Dictionary<string, int>(); // 0=unvisited,1=in-stack,2=done
+        bool HasCycle(string id)
+        {
+            if (state.TryGetValue(id, out var s))
+            {
+                if (s == 1) return true;
+                if (s == 2) return false;
+            }
+            state[id] = 1;
+            var b = GetBuilding(id);
+            if (b is not null)
+                foreach (var req in b.Requires)
+                    if (GetBuilding(req) is not null && HasCycle(req))
+                        return true;
+            state[id] = 2;
+            return false;
+        }
+        foreach (var b in BuildingList)
+            if (state.GetValueOrDefault(b.Id) == 0 && HasCycle(b.Id))
+            {
+                errors.Add($"building prerequisite cycle detected involving '{b.Id}'");
+                break; // one cycle report is enough
+            }
+
+        return errors;
+    }
 }
 
 public sealed record UnitDef(
