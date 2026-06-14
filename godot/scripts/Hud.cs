@@ -145,6 +145,18 @@ public partial class Hud : CanvasLayer
             }
         }
 
+        if (_sel.SelectedBuilding != 0 && w.GetBuilding(_sel.SelectedBuilding) is { IsComplete: true } rb
+            && w.Faction is { } researchFaction)
+        {
+            foreach (var udef in researchFaction.UpgradeList.Where(u => u.ResearchedAt == rb.DefId
+                                                                      && !w.Players[p].HasUpgrade(u.Id)))
+            {
+                var capturedUp = udef;
+                AddButton($"Research {capturedUp.Id} ({capturedUp.MineralCost})",
+                    () => _runner.Enqueue(new ResearchCommand(p, rb.Id, capturedUp.Id)));
+            }
+        }
+
         // Stance buttons: shown when ≥1 owned ARMED unit is selected.
         var armedUnits = selectedUnits.Where(u => u?.Weapon is not null).ToList();
         if (armedUnits.Count > 0)
