@@ -12,11 +12,17 @@ public sealed class FactionDef
     public string Name { get; }
     public IReadOnlyList<UnitDef> UnitList { get; }
     public IReadOnlyList<BuildingDef> BuildingList { get; }
+    public IReadOnlyList<UpgradeDef> UpgradeList { get; }
 
     private readonly Dictionary<string, UnitDef> _units = new();
     private readonly Dictionary<string, BuildingDef> _buildings = new();
+    private readonly Dictionary<string, UpgradeDef> _upgrades = new();
 
     public FactionDef(string id, string name, IEnumerable<UnitDef> units, IEnumerable<BuildingDef> buildings)
+        : this(id, name, units, buildings, System.Array.Empty<UpgradeDef>()) { }
+
+    public FactionDef(string id, string name, IEnumerable<UnitDef> units,
+        IEnumerable<BuildingDef> buildings, IEnumerable<UpgradeDef> upgrades)
     {
         Id = id;
         Name = name;
@@ -24,12 +30,16 @@ public sealed class FactionDef
         foreach (var u in units) { ul.Add(u); _units[u.Id] = u; }
         var bl = new List<BuildingDef>();
         foreach (var b in buildings) { bl.Add(b); _buildings[b.Id] = b; }
+        var gl = new List<UpgradeDef>();
+        foreach (var g in upgrades) { gl.Add(g); _upgrades[g.Id] = g; }
         UnitList = ul;
         BuildingList = bl;
+        UpgradeList = gl;
     }
 
     public UnitDef? GetUnit(string id) => _units.TryGetValue(id, out var u) ? u : null;
     public BuildingDef? GetBuilding(string id) => _buildings.TryGetValue(id, out var b) ? b : null;
+    public UpgradeDef? GetUpgrade(string id) => _upgrades.TryGetValue(id, out var g) ? g : null;
 
     /// <summary>Referential integrity + cycle detection. Returns human-readable errors
     /// (empty = valid). Seed of the plan-3d pack validator; budget/structural rules are NOT here.</summary>
@@ -87,3 +97,10 @@ public sealed record UnitDef(
 
 public sealed record BuildingDef(
     string Id, int Tier, IReadOnlyList<string> Requires, BuildingSpec Spec);
+
+public enum UpgradeStat { Damage, Range, CooldownTicks, Speed, Sight }
+
+public sealed record UpgradeDef(
+    string Id, int Tier, string ResearchedAt, IReadOnlyList<string> Requires,
+    IReadOnlyList<string> TargetUnitDefIds, UpgradeStat Stat, SimCore.Math.Fix Delta,
+    int MineralCost, int ResearchTicks);
