@@ -71,4 +71,11 @@ public class FixJsonConverterTests
     {
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Fix>("1e30", Opts()));
     }
+
+    [Fact]
+    public void Overflow_band_value_throws_JsonException()
+    {
+        // Passes TryGetDecimal but value*65536 overflows decimal -> must surface as JsonException, not OverflowException.
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Fix>("5e24", Opts()));
+    }
 }

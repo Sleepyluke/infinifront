@@ -33,7 +33,15 @@ public sealed class FixJsonConverter : JsonConverter<Fix>
             throw new JsonException($"Fix expects a number or string, got {reader.TokenType}");
         }
 
-        decimal scaled = value * Scale;
+        decimal scaled;
+        try
+        {
+            scaled = value * Scale;
+        }
+        catch (OverflowException)
+        {
+            throw new JsonException($"Fix value {value} is out of Q48.16 range");
+        }
         if (scaled < long.MinValue || scaled > long.MaxValue)
             throw new JsonException($"Fix value {value} is out of Q48.16 range");
         long raw = (long)System.Math.Round(scaled, MidpointRounding.ToEven);
