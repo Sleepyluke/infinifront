@@ -96,6 +96,7 @@ public sealed partial class SimWorld
         UpdateConstruction();
         UpdateProduction();
         UpdateResearch();
+        UpdateShields();
         RemoveDead();
         RemoveDeadBuildings();
         Tick++;

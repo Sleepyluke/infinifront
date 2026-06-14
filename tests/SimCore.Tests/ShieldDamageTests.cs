@@ -27,7 +27,9 @@ public class ShieldDamageTests
         var v = w.GetUnit(vic)!;
         Assert.Equal(15, v.ShieldHp);
         Assert.Equal(50, v.Hp);
-        Assert.Equal(0, v.TicksSinceDamaged);
+        // After damage, TicksSinceDamaged is transitioned 0->1 by UpdateShields (reset happened in UpdateCombat,
+        // then UpdateShields restarted the countdown). This is correct: the damage timer starts fresh.
+        Assert.Equal(1, v.TicksSinceDamaged);
     }
 
     [Fact]
