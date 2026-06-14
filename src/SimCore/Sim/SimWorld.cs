@@ -432,7 +432,7 @@ public sealed partial class SimWorld
             }
 
             u.Position = newPos;
-            if (dist <= u.SpeedPerTick && cx == ttx && cy == tty)
+            if (dist <= spd && cx == ttx && cy == tty)
             {
                 u.HasMoveOrder = false;
                 u.Path = null;
