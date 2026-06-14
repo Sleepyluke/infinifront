@@ -547,3 +547,14 @@ git commit -m "feat: Godot shield bar above HP bar when ShieldHp > 0"
 - `grep -rni godot src/SimCore` → no hits; no float/double in src/SimCore outside `Fix.ToString()`.
 
 **Next plan (3d):** Faction pack format + validator — JSON ↔ `FactionDef` (units/buildings/upgrades/mechanic/tiers), the `Fix` wire-format converter (recorded landmine), point-budget balance formula, multi-stage validator + fix-it loop, pack loader, the Faction Forge prompt, and the reference faction as the first data pack.
+
+## Plan-3d Inputs (carried forward from 3c final review — STATUS: 3c COMPLETE, merged 2026-06-13, 224 SimCore tests, golden 5141900307592480923UL)
+
+1. **`Fix` JSON converter is THE landmine.** `Fix` is a readonly struct wrapping `long Raw` (Q48.16). Three Fix fields must round-trip deterministically: `UnitSpec.Speed`, `WeaponSpec.Range`, `UpgradeDef.Delta`. Do NOT reuse `Fix.ToString()` (uses double, lossy — it's the lone double in SimCore). Write a `JsonConverter<Fix>` using a decimal string (or fraction) that parses back exactly via `FromFraction`/raw — deterministic, human-authorable. `MaxShield`/`RegenPerTick`/`RegenDelayTicks`/HP/cooldown/tier are plain ints (fine).
+2. **Feed the ctor, never rebuild dicts.** JSON↔FactionDef mapper must pass ordered arrays to the FactionDef ctor (which builds the lookup dicts in order); never reconstruct `_units`/`_buildings`/`_upgrades` directly — preserves spawn/iteration determinism.
+3. **`MechanicDef`**: serialize `MechanicKind` by NAME (forward-compat as kinds grow). Budget formula prices the mechanic from its fields (shield cost ≈ MaxShield × regen rate). Mechanic is static/unhashed — pricing is pure pack-load concern.
+4. **Nullable/defaulted fields:** `UnitSpec.Weapon`/`.Harvester` are nullable (omit/null in JSON); `BuildingSpec` has many defaulted bools/ints (IsDepot, CanTrain, SupplyProvided, SightRange) — treat as optional-with-defaults in pack JSON.
+5. **`Validate()` is the validator SEED** (referential integrity + mechanic params only). 3d ADDS the multi-stage validator: point-budget balance formula, tier monotonicity, producer-reachability, structural rules — folding the existing checks in.
+6. **Budget formula prices all four catalogs:** units (HP/speed/weapon/sight/cost), buildings, upgrades (Delta × stat × target breadth), mechanic. Define a power formula + per-tier budget; cost must scale with power within tolerance.
+7. **`FactionDef` is a class, not a record** — no structural `==`. Round-trip test (FactionDef→JSON→FactionDef) must compare via the lists/fields or a test helper, not `==`.
+8. **Per-player seam (plan 5, NOT 3d):** `InitialShield()` and the Godot shield bar read the shared `Faction?.Mechanic`; when factions go per-player they'll need owner-aware lookup. Out of scope for 3d (still single shared faction).
