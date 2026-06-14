@@ -77,4 +77,50 @@ public class FactionPackLoaderTests
         Assert.Contains("\n", json);              // indented (multi-line)
         Assert.Contains("\"reference\"", json);
     }
+
+    [Fact]
+    public void Null_input_returns_error_not_throw()
+    {
+        var result = FactionPackLoader.LoadFromJson(null!);
+        Assert.Null(result.Faction);
+        Assert.NotEmpty(result.Errors);
+    }
+
+    [Fact]
+    public void Whitespace_input_returns_error_not_throw()
+    {
+        var result = FactionPackLoader.LoadFromJson("   ");
+        Assert.Null(result.Faction);
+        Assert.NotEmpty(result.Errors);
+    }
+
+    [Fact]
+    public void Null_element_in_requires_returns_error_not_throw()
+    {
+        // Valid JSON, but a null inside an inner string list -> Validate()'s dict lookup must not escape.
+        string json = """
+        { "id": "x", "name": "X",
+          "units": [ { "id": "u", "tier": 1, "producedBy": "b", "requires": [null],
+                       "maxHp": 10, "speed": 1, "mineralCost": 1, "supplyCost": 1, "buildTimeTicks": 1 } ],
+          "buildings": [ { "id": "b", "tier": 1, "maxHp": 10, "width": 1, "height": 1, "mineralCost": 1, "buildTimeTicks": 1 } ] }
+        """;
+        var result = FactionPackLoader.LoadFromJson(json);
+        Assert.Null(result.Faction);
+        Assert.NotEmpty(result.Errors);
+    }
+
+    [Fact]
+    public void Null_researched_at_returns_error_not_throw()
+    {
+        string json = """
+        { "id": "x", "name": "X",
+          "units": [],
+          "buildings": [ { "id": "b", "tier": 1, "maxHp": 10, "width": 1, "height": 1, "mineralCost": 1, "buildTimeTicks": 1 } ],
+          "upgrades": [ { "id": "g", "tier": 1, "researchedAt": null, "targetUnitDefIds": ["*"],
+                          "stat": "Damage", "delta": 1, "mineralCost": 1, "researchTicks": 1 } ] }
+        """;
+        var result = FactionPackLoader.LoadFromJson(json);
+        Assert.Null(result.Faction);
+        Assert.NotEmpty(result.Errors);
+    }
 }

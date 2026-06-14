@@ -15,6 +15,9 @@ public static class FactionPackLoader
 {
     public static PackLoadResult LoadFromJson(string json)
     {
+        if (string.IsNullOrWhiteSpace(json))
+            return new PackLoadResult(null, new[] { "pack JSON was null or empty" });
+
         FactionPackDto? dto;
         try
         {
@@ -38,7 +41,18 @@ public static class FactionPackLoader
             return new PackLoadResult(null, new[] { $"pack mapping error: {ex.Message}" });
         }
 
-        var errors = def.Validate();
+        IReadOnlyList<string> errors;
+        try
+        {
+            errors = def.Validate();
+        }
+        catch (Exception ex)
+        {
+            // A pack can parse + map yet still contain nulls inside inner lists that make
+            // Validate()'s dictionary lookups throw. Never let that escape the loader.
+            return new PackLoadResult(null, new[] { $"pack validation error: {ex.Message}" });
+        }
+
         return new PackLoadResult(def, errors);
     }
 
