@@ -30,7 +30,78 @@ public static class PackValidator
             if (string.IsNullOrWhiteSpace(g.Id))
                 findings.Add(new(Severity.Error, "ID_BLANK", g.Id, "an upgrade has a blank id"));
 
+        // Reachability / playability.
+        var reachB = ReachableBuildings(faction);
+        var reachU = ReachableUpgrades(faction, reachB);
+
+        foreach (var up in faction.UpgradeList)
+            if (!reachU.Contains(up.Id))
+                findings.Add(new(Severity.Error, "UPGRADE_UNREACHABLE", up.Id,
+                    $"upgrade '{up.Id}' can never be researched (its building or prerequisites are unreachable)"));
+
+        int buildable = 0;
+        foreach (var u in faction.UnitList)
+        {
+            if (IsBuildable(u, reachB, reachU)) { buildable++; continue; }
+            string why = !reachB.Contains(u.ProducedBy)
+                ? $"its producer '{u.ProducedBy}' is unreachable"
+                : "one of its prerequisites is unreachable";
+            findings.Add(new(Severity.Error, "PRODUCER_UNREACHABLE", u.Id,
+                $"unit '{u.Id}' can never be built ({why})"));
+        }
+
+        if (faction.UnitList.Count > 0 && buildable == 0)
+            findings.Add(new(Severity.Error, "NO_SEED_UNIT", null,
+                "no unit can be built from the starting tech (faction is unplayable)"));
+
         return findings;
+    }
+
+    private static HashSet<string> ReachableBuildings(FactionDef f)
+    {
+        var reach = new HashSet<string>();
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var b in f.BuildingList)
+            {
+                if (reach.Contains(b.Id)) continue;
+                bool all = true;
+                foreach (var req in b.Requires)
+                    if (!reach.Contains(req)) { all = false; break; }
+                if (all) { reach.Add(b.Id); changed = true; }
+            }
+        }
+        return reach;
+    }
+
+    private static HashSet<string> ReachableUpgrades(FactionDef f, HashSet<string> reachB)
+    {
+        var reach = new HashSet<string>();
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var up in f.UpgradeList)
+            {
+                if (reach.Contains(up.Id)) continue;
+                if (!reachB.Contains(up.ResearchedAt)) continue;
+                bool all = true;
+                foreach (var req in up.Requires)
+                    if (!reachB.Contains(req) && !reach.Contains(req)) { all = false; break; }
+                if (all) { reach.Add(up.Id); changed = true; }
+            }
+        }
+        return reach;
+    }
+
+    private static bool IsBuildable(UnitDef u, HashSet<string> reachB, HashSet<string> reachU)
+    {
+        if (!reachB.Contains(u.ProducedBy)) return false;
+        foreach (var req in u.Requires)
+            if (!reachB.Contains(req) && !reachU.Contains(req)) return false;
+        return true;
     }
 }
 
