@@ -17,6 +17,11 @@ public static class StateHasher
     /// SimWorld.FogEnabled (debug-only toggle; never toggled mid-match in any lockstep context).
     /// Building.DefId is excluded: a derived static label (1:1 with the already-hashed building
     /// spec fields; set at placement and never varies during a match).
+    /// Unit.DefId and TrainingItem.UnitDefId are excluded: derived static labels, 1:1 with
+    /// already-hashed spec fields; set at spawn/queue time and never vary during a match.
+    /// Building research slot (ResearchingId + ResearchTicksRemaining) IS hashed (v4, Task 7).
+    /// PlayerState.AppliedUpgrades IS hashed (v4, Task 7) — list is kept sorted (Ordinal) so
+    /// iteration order is deterministic regardless of research-completion order.
     /// MapGrid passability IS hashed (mutable mid-run since buildings
     /// and node depletion), packed 64 cells per Mix, along with Map.Version.
     /// Patterns for new state: nullable objects need a presence marker before their
@@ -79,6 +84,12 @@ public static class StateHasher
             h = Mix(h, (ulong)p.Minerals);
             h = Mix(h, (ulong)p.SupplyUsed);
             h = Mix(h, (ulong)p.SupplyCap);
+            h = Mix(h, (ulong)p.AppliedUpgrades.Count);
+            foreach (var up in p.AppliedUpgrades) // already sorted → deterministic
+            {
+                h = Mix(h, (ulong)up.Length);
+                foreach (var ch in up) h = Mix(h, ch);
+            }
         }
 
         h = Mix(h, (ulong)world.Buildings.Count);
@@ -108,6 +119,9 @@ public static class StateHasher
             h = Mix(h, b.HasRally ? 1UL : 0UL);
             h = Mix(h, (ulong)b.RallyPoint.X.Raw);
             h = Mix(h, (ulong)b.RallyPoint.Y.Raw);
+            h = Mix(h, (ulong)b.ResearchingId.Length);
+            foreach (var ch in b.ResearchingId) h = Mix(h, ch);
+            h = Mix(h, (ulong)b.ResearchTicksRemaining);
         }
 
         h = Mix(h, (ulong)world.Nodes.Count);

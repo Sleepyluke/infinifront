@@ -40,10 +40,15 @@ public class DeterminismTests
             {
                 new BuildingDef("depot", 1, System.Array.Empty<string>(), depotSpec),
                 new BuildingDef("rax", 1, System.Array.Empty<string>(), raxSpec),
+            },
+            upgrades: new[]
+            {
+                new UpgradeDef("dmg1", 1, "rax", System.Array.Empty<string>(), new[] { "*" },
+                    UpgradeStat.Damage, Fix.FromInt(3), 50, 20),
             });
 
         var w = new SimWorld(map, seed: 1234, faction: scenarioFaction);
-        w.Players[0].Minerals = 400;
+        w.Players[0].Minerals = 500;
         w.Players[1].Minerals = 400;
 
         var nodeId = w.AddResourceNode(10, 12, amount: 10);
@@ -153,6 +158,8 @@ public class DeterminismTests
                 new SetRallyCommand(0, RaxId, w.Map.CellCenter(25, 15)),
             },
             [250] = new() { new TrainCommand(0, RaxId, "marine"), new TrainCommand(0, RaxId, "marine") },
+            // v6 new: research dmg1 upgrade at rax — completes ~t=320, boosting all p0 unit damage by +3.
+            [300] = new() { new ResearchCommand(0, RaxId, "dmg1") },
             [350] = new() { new AttackCommand(0, Owned(0), ids[11]) },
             // v5 new: DestroyCommand on sniper (id=23). By t=400 the sniper has been fighting
             // sniperTarget (200hp, 5dmg/10ticks — target nearly dead but sniper fully alive at 200hp).
@@ -222,6 +229,6 @@ public class DeterminismTests
         Assert.Equal(GoldenTrajectoryHash, combined);
     }
 
-    private const ulong GoldenTrajectoryHash = 4005804941942785108UL;
+    private const ulong GoldenTrajectoryHash = 6959374437731592347UL;
 
 }
