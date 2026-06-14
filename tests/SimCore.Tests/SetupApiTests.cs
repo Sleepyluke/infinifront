@@ -20,11 +20,11 @@ public class SetupApiTests
     [Fact]
     public void Completed_Barracks_Can_Train_Immediately()
     {
-        var w = new SimWorld(new MapGrid(20, 20), seed: 1);
+        var w = new SimWorld(new MapGrid(20, 20), seed: 1, faction: ReferenceFaction.Def);
         w.Players[0].Minerals = 500;
         w.Players[0].SupplyCap = 10;
-        var id = w.AddCompletedBuilding(0, ReferenceSpecs.Barracks, 5, 5);
-        w.Step(new Command[] { new TrainCommand(0, id, ReferenceSpecs.Trooper) });
+        var id = w.AddCompletedBuilding(0, ReferenceSpecs.Barracks, 5, 5, "barracks");
+        w.Step(new Command[] { new TrainCommand(0, id, "trooper") });
         Assert.Single(w.GetBuilding(id)!.Queue);
     }
 

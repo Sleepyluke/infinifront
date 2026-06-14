@@ -6,10 +6,6 @@ public class ProductionTests
 {
     private static readonly BuildingSpec Barracks = TestFactions.BarracksSpec;
 
-    private static readonly UnitSpec Marine =
-        new(MaxHp: 40, Speed: Fix.FromFraction(1, 2), MineralCost: 50, SupplyCost: 1, BuildTimeTicks: 8,
-            Weapon: new WeaponSpec(6, Fix.FromInt(2), 5));
-
     private static (SimWorld w, int barracksId) ReadyWorld()
     {
         var w = new SimWorld(new MapGrid(20, 20), seed: 1, faction: TestFactions.Standard);
@@ -28,11 +24,11 @@ public class ProductionTests
         var unitsBefore = w.Units.Count;
         var mineralsBefore = w.Players[0].Minerals;
 
-        w.Step(new Command[] { new TrainCommand(0, bid, Marine) });
+        w.Step(new Command[] { new TrainCommand(0, bid, "marine") });
         Assert.Equal(mineralsBefore - 50, w.Players[0].Minerals);
         Assert.Equal(1, w.Players[0].SupplyUsed);
 
-        for (int i = 0; i < Marine.BuildTimeTicks; i++) w.Step(System.Array.Empty<Command>());
+        for (int i = 0; i < TestFactions.MarineSpec.BuildTimeTicks; i++) w.Step(System.Array.Empty<Command>());
         Assert.Equal(unitsBefore + 1, w.Units.Count);
         var trained = w.Units[^1];
         Assert.Equal(40, trained.Hp);
@@ -50,7 +46,7 @@ public class ProductionTests
         var (w, bid) = ReadyWorld();
         w.Players[0].SupplyCap = w.Players[0].SupplyUsed; // no headroom
         var minerals = w.Players[0].Minerals;
-        w.Step(new Command[] { new TrainCommand(0, bid, Marine) });
+        w.Step(new Command[] { new TrainCommand(0, bid, "marine") });
         Assert.Equal(minerals, w.Players[0].Minerals);
         Assert.Empty(w.GetBuilding(bid)!.Queue);
     }
@@ -60,7 +56,7 @@ public class ProductionTests
     {
         var (w, bid) = ReadyWorld();
         var cmds = new Command[7];
-        for (int i = 0; i < 7; i++) cmds[i] = new TrainCommand(0, bid, Marine);
+        for (int i = 0; i < 7; i++) cmds[i] = new TrainCommand(0, bid, "marine");
         w.Step(cmds);
         Assert.Equal(5, w.GetBuilding(bid)!.Queue.Count);
         Assert.Equal(1000 - 150 - 5 * 50, w.Players[0].Minerals); // barracks + 5 marines paid
@@ -75,7 +71,7 @@ public class ProductionTests
         var worker = w.SpawnUnit(0, w.Map.CellCenter(5, 5), Fix.FromFraction(1, 2), 30);
         w.Step(new Command[] { new BuildCommand(0, worker, "barracks", 7, 5) });
         var bid = w.Buildings[0].Id; // still under construction
-        w.Step(new Command[] { new TrainCommand(0, bid, Marine) });
+        w.Step(new Command[] { new TrainCommand(0, bid, "marine") });
         Assert.Empty(w.GetBuilding(bid)!.Queue);
     }
 
@@ -90,8 +86,8 @@ public class ProductionTests
                 if (w.Map.IsPassable(x, y)) w.Map.SetPassable(x, y, false);
 
         var unitsBefore = w.Units.Count;
-        w.Step(new Command[] { new TrainCommand(0, bid, Marine) });
-        for (int i = 0; i < Marine.BuildTimeTicks + 5; i++) w.Step(System.Array.Empty<Command>());
+        w.Step(new Command[] { new TrainCommand(0, bid, "marine") });
+        for (int i = 0; i < TestFactions.MarineSpec.BuildTimeTicks + 5; i++) w.Step(System.Array.Empty<Command>());
         Assert.Equal(unitsBefore, w.Units.Count);              // blocked — nothing spawned
         Assert.Single(w.GetBuilding(bid)!.Queue);              // still queued
 
@@ -105,7 +101,7 @@ public class ProductionTests
     public void Destroyed_Building_Releases_Queue_Reservations()
     {
         var (w, bid) = ReadyWorld();
-        w.Step(new Command[] { new TrainCommand(0, bid, Marine), new TrainCommand(0, bid, Marine) });
+        w.Step(new Command[] { new TrainCommand(0, bid, "marine"), new TrainCommand(0, bid, "marine") });
         Assert.Equal(2, w.Players[0].SupplyUsed);
         var mineralsAfterEnqueue = w.Players[0].Minerals;
 

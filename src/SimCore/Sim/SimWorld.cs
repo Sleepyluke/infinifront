@@ -179,15 +179,19 @@ public sealed partial class SimWorld
                 PlaceBuilding(bc.PlayerId, bdef.Spec, bc.CellX, bc.CellY, bc.BuildingDefId);
                 break;
             case TrainCommand tc:
+                var udef = Faction?.GetUnit(tc.UnitDefId);
+                if (udef is null) break; // unknown unit def — reject
                 var trainer = GetBuilding(tc.BuildingId);
                 if (trainer is null || trainer.OwnerId != tc.PlayerId || !trainer.IsComplete || !trainer.Spec.CanTrain) break;
+                if (trainer.DefId != udef.ProducedBy) break; // this building is not the unit's producer
+                if (!PrerequisitesMet(tc.PlayerId, udef.Requires)) break;
                 if (trainer.Queue.Count >= Building.MaxQueueLength) break;
                 var ps = _players[tc.PlayerId];
-                if (ps.Minerals < tc.Spec.MineralCost) break;
-                if (ps.SupplyUsed + tc.Spec.SupplyCost > ps.SupplyCap) break;
-                ps.Minerals -= tc.Spec.MineralCost;
-                ps.SupplyUsed += tc.Spec.SupplyCost; // reserve supply at enqueue
-                trainer.Queue.Add(new TrainingItem { Spec = tc.Spec, RemainingTicks = tc.Spec.BuildTimeTicks });
+                if (ps.Minerals < udef.Spec.MineralCost) break;
+                if (ps.SupplyUsed + udef.Spec.SupplyCost > ps.SupplyCap) break;
+                ps.Minerals -= udef.Spec.MineralCost;
+                ps.SupplyUsed += udef.Spec.SupplyCost; // reserve supply at enqueue
+                trainer.Queue.Add(new TrainingItem { Spec = udef.Spec, RemainingTicks = udef.Spec.BuildTimeTicks });
                 break;
             case HarvestCommand hc:
                 if (GetNode(hc.NodeId) is null) break;

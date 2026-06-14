@@ -6,10 +6,10 @@ public class RallyDestroyTests
 {
     private static (SimWorld w, int rax) TrainerWorld()
     {
-        var w = new SimWorld(new MapGrid(30, 30), seed: 1);
+        var w = new SimWorld(new MapGrid(30, 30), seed: 1, faction: ReferenceFaction.Def);
         w.Players[0].Minerals = 500;
         w.Players[0].SupplyCap = 10;
-        var rax = w.AddCompletedBuilding(0, ReferenceSpecs.Barracks, 5, 5);
+        var rax = w.AddCompletedBuilding(0, ReferenceSpecs.Barracks, 5, 5, "barracks");
         return (w, rax);
     }
 
@@ -19,7 +19,7 @@ public class RallyDestroyTests
         var (w, rax) = TrainerWorld();
         w.Step(new Command[] {
             new SetRallyCommand(0, rax, w.Map.CellCenter(20, 20)),
-            new TrainCommand(0, rax, ReferenceSpecs.Trooper),
+            new TrainCommand(0, rax, "trooper"),
         });
         for (int i = 0; i < ReferenceSpecs.Trooper.BuildTimeTicks + 200; i++) w.Step(System.Array.Empty<Command>());
         var trooper = w.Units[^1];
@@ -34,7 +34,7 @@ public class RallyDestroyTests
         w.Step(new Command[] { new SetRallyCommand(0, rax, w.Map.CellCenter(20, 20)) });
         w.Step(new Command[] { new SetRallyCommand(0, rax, default, Clear: true) });
         Assert.False(w.GetBuilding(rax)!.HasRally);
-        w.Step(new Command[] { new TrainCommand(0, rax, ReferenceSpecs.Trooper) });
+        w.Step(new Command[] { new TrainCommand(0, rax, "trooper") });
         for (int i = 0; i < ReferenceSpecs.Trooper.BuildTimeTicks + 5; i++) w.Step(System.Array.Empty<Command>());
         Assert.False(w.Units[^1].HasMoveOrder); // spawned idle at the perimeter
     }

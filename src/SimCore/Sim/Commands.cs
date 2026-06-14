@@ -13,7 +13,7 @@ public sealed record AttackMoveCommand(int PlayerId, int[] UnitIds, FixVec Targe
 
 public sealed record BuildCommand(int PlayerId, int WorkerUnitId, string BuildingDefId, int CellX, int CellY) : Command(PlayerId);
 
-public sealed record TrainCommand(int PlayerId, int BuildingId, UnitSpec Spec) : Command(PlayerId);
+public sealed record TrainCommand(int PlayerId, int BuildingId, string UnitDefId) : Command(PlayerId);
 
 public sealed record HarvestCommand(int PlayerId, int[] UnitIds, int NodeId) : Command(PlayerId);
 

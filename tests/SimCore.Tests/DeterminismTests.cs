@@ -152,7 +152,7 @@ public class DeterminismTests
             {
                 new SetRallyCommand(0, RaxId, w.Map.CellCenter(25, 15)),
             },
-            [250] = new() { new TrainCommand(0, RaxId, marineSpec), new TrainCommand(0, RaxId, marineSpec) },
+            [250] = new() { new TrainCommand(0, RaxId, "marine"), new TrainCommand(0, RaxId, "marine") },
             [350] = new() { new AttackCommand(0, Owned(0), ids[11]) },
             // v5 new: DestroyCommand on sniper (id=23). By t=400 the sniper has been fighting
             // sniperTarget (200hp, 5dmg/10ticks — target nearly dead but sniper fully alive at 200hp).
