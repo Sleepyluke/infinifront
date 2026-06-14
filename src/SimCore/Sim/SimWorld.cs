@@ -95,6 +95,7 @@ public sealed partial class SimWorld
         UpdateHarvest();
         UpdateConstruction();
         UpdateProduction();
+        UpdateResearch();
         RemoveDead();
         RemoveDeadBuildings();
         Tick++;
@@ -174,7 +175,7 @@ public sealed partial class SimWorld
                 if (_players[bc.PlayerId].Minerals < bdef.Spec.MineralCost) break;
                 var siteCenter = FootprintCenter(bc.CellX, bc.CellY, bdef.Spec.Width, bdef.Spec.Height);
                 if ((builder.Position - siteCenter).LengthSquared() > Fix.FromInt(16)) break; // within 4 of site center
-                if (!FootprintPlaceable(bc.CellX, bc.CellY, bdef.Spec.Width, bdef.Spec.Height)) break;
+                if (!FootprintPlaceable(bc.CellX, bc.CellY, bdef.Spec.Width, bdef.Spec.Height, bc.WorkerUnitId)) break;
                 _players[bc.PlayerId].Minerals -= bdef.Spec.MineralCost;
                 PlaceBuilding(bc.PlayerId, bdef.Spec, bc.CellX, bc.CellY, bc.BuildingDefId);
                 break;
@@ -283,6 +284,20 @@ public sealed partial class SimWorld
                     srBuilding.HasRally = true;
                     srBuilding.RallyPoint = sr.Target;
                 }
+                break;
+            case ResearchCommand rc:
+                var rup = Faction?.GetUpgrade(rc.UpgradeDefId);
+                if (rup is null) break;
+                var rb = GetBuilding(rc.BuildingId);
+                if (rb is null || rb.OwnerId != rc.PlayerId || !rb.IsComplete) break;
+                if (rb.DefId != rup.ResearchedAt) break;
+                if (rb.ResearchingId.Length != 0) break;
+                if (_players[rc.PlayerId].HasUpgrade(rup.Id)) break;
+                if (!PrerequisitesMet(rc.PlayerId, rup.Requires)) break;
+                if (_players[rc.PlayerId].Minerals < rup.MineralCost) break;
+                _players[rc.PlayerId].Minerals -= rup.MineralCost;
+                rb.ResearchingId = rup.Id;
+                rb.ResearchTicksRemaining = rup.ResearchTicks;
                 break;
             case DestroyCommand dc:
                 foreach (var id in dc.Ids)

@@ -24,3 +24,5 @@ public sealed record PatrolCommand(int PlayerId, int[] UnitIds, FixVec Target) :
 public sealed record SetRallyCommand(int PlayerId, int BuildingId, FixVec Target, bool Clear = false) : Command(PlayerId);
 
 public sealed record DestroyCommand(int PlayerId, int[] Ids) : Command(PlayerId);
+
+public sealed record ResearchCommand(int PlayerId, int BuildingId, string UpgradeDefId) : Command(PlayerId);

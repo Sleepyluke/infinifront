@@ -20,6 +20,9 @@ public sealed class Building
 
     public bool HasRally { get; set; }
     public FixVec RallyPoint { get; set; }
+
+    public string ResearchingId { get; set; } = ""; // "" = idle
+    public int ResearchTicksRemaining { get; set; }
 }
 
 public sealed class TrainingItem
