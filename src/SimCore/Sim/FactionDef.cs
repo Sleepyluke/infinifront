@@ -13,6 +13,7 @@ public sealed class FactionDef
     public IReadOnlyList<UnitDef> UnitList { get; }
     public IReadOnlyList<BuildingDef> BuildingList { get; }
     public IReadOnlyList<UpgradeDef> UpgradeList { get; }
+    public MechanicDef? Mechanic { get; }
 
     private readonly Dictionary<string, UnitDef> _units = new();
     private readonly Dictionary<string, BuildingDef> _buildings = new();
@@ -22,7 +23,7 @@ public sealed class FactionDef
         : this(id, name, units, buildings, System.Array.Empty<UpgradeDef>()) { }
 
     public FactionDef(string id, string name, IEnumerable<UnitDef> units,
-        IEnumerable<BuildingDef> buildings, IEnumerable<UpgradeDef> upgrades)
+        IEnumerable<BuildingDef> buildings, IEnumerable<UpgradeDef> upgrades, MechanicDef? mechanic = null)
     {
         Id = id;
         Name = name;
@@ -35,6 +36,7 @@ public sealed class FactionDef
         UnitList = ul;
         BuildingList = bl;
         UpgradeList = gl;
+        Mechanic = mechanic;
     }
 
     public UnitDef? GetUnit(string id) => _units.TryGetValue(id, out var u) ? u : null;
@@ -104,6 +106,14 @@ public sealed class FactionDef
         if (cycleFound)
             errors.Add("prerequisite cycle detected");
 
+        if (Mechanic is { } m)
+        {
+            if (m.Kind == MechanicKind.None && (m.MaxShield != 0 || m.RegenPerTick != 0 || m.RegenDelayTicks != 0))
+                errors.Add("mechanic kind is None but has nonzero params");
+            if (m.MaxShield < 0 || m.RegenPerTick < 0 || m.RegenDelayTicks < 0)
+                errors.Add($"mechanic has negative params (shield {m.MaxShield}, regen {m.RegenPerTick}, delay {m.RegenDelayTicks})");
+        }
+
         return errors;
     }
 }
@@ -120,3 +130,7 @@ public sealed record UpgradeDef(
     string Id, int Tier, string ResearchedAt, IReadOnlyList<string> Requires,
     IReadOnlyList<string> TargetUnitDefIds, UpgradeStat Stat, SimCore.Math.Fix Delta,
     int MineralCost, int ResearchTicks);
+
+public enum MechanicKind { None = 0, RegeneratingShields = 1 }
+
+public sealed record MechanicDef(MechanicKind Kind, int MaxShield, int RegenPerTick, int RegenDelayTicks);
