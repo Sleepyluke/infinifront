@@ -903,3 +903,13 @@ git commit -m "test: determinism scenario verification (id-based commands)"
 - `grep -ri godot src/SimCore` → no hits; no float/double in `src/SimCore` outside `Fix.ToString()`.
 
 **Next plan (3b):** Upgrades / research — research orders at buildings, upgrade defs applying stat deltas, per-player applied-upgrade state (hashed, scenario re-pinned), extending `FactionDef` with an upgrades catalog.
+
+## Plan-3b Inputs (carried forward from 3a final review — STATUS: 3a COMPLETE, merged 2026-06-13, 183 SimCore tests, golden 4005804941942785108UL)
+
+1. **Extend FactionDef additively** — add `IEnumerable<UpgradeDef> upgrades` ctor param + `UpgradeList`/`GetUpgrade(id)`, mirroring units/buildings; keep "dicts lookup-only, ordered enumeration via *List".
+2. **Grow `Validate()`** — upgrade `ResearchedAt` building exists; upgrade `Requires` (buildings AND upgrades) resolve; extend cycle detection to the upgrade/combined prereq graph (current DFS is building-only).
+3. **`ResearchCommand(PlayerId, BuildingId, UpgradeDefId)`** — mirror TrainCommand: validate producer via `building.DefId == upgradeDef.ResearchedAt`, `PrerequisitesMet`, charge minerals/time. Research is one-shot (no supply, not queue-of-N) — decide whether it reuses Building.Queue or gets a single-slot research-progress field.
+4. **Per-player applied-upgrade state must be hashed deterministically** — add to `PlayerState` as an ORDERED structure (sorted list of completed upgrade ids, or index bitmask) — NEVER a plain HashSet iterated in StateHasher. Fold into StateHasher and re-pin the golden in the same commit.
+5. **`PrerequisitesMet` must learn upgrade prereqs** — refactor to a single `Has(playerId, reqId)` resolving against both owned-complete-buildings and applied-upgrades.
+6. **CRUX DECISION for the 3b spec — upgrade effect application:** tiers/prereqs were pure gating (no stat mutation); upgrades mutate stats, colliding with the immutable-spec-copied-at-spawn model. Decide in the spec: (a) **apply-at-spawn** (read player upgrades when constructing the entity — simpler, determinism-friendly, only affects future units) vs (b) **apply-retroactively** (recompute existing entities' stats on research completion — bigger hashing surface, re-derives hashed fields). Recommend (a) unless retroactive upgrades are a hard requirement.
+7. **Minor (not blocking):** `FactionDef.Validate()` is library-only (called by the 3d pack loader, not at runtime) — an invalid hand-authored faction isn't caught live today; fine while ReferenceFaction is the only faction. `PrerequisitesMet` is O(requires×buildings)/command — fine at current scale.
