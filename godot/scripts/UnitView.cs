@@ -15,6 +15,7 @@ public partial class UnitView : Node2D
     private string _facing = "S";
     private Vector2 _prevPos, _currPos;
     private int _maxHp = 1, _hp = 1;
+    private int _shieldHp;
     private bool _attacking;
     private bool _dying;
     private bool _isPatrolling;
@@ -47,6 +48,7 @@ public partial class UnitView : Node2D
         _currPos = RenderMath.ToPx(u.Position);
         _hp = u.Hp;
         if (u.Hp > _maxHp) _maxHp = u.Hp;
+        _shieldHp = u.ShieldHp;
 
         var delta = _currPos - _prevPos;
         bool moving = delta.LengthSquared() > 0.01f;
@@ -110,6 +112,14 @@ public partial class UnitView : Node2D
             var color = frac > 0.66f ? Colors.Lime : frac > 0.33f ? Colors.Yellow : Colors.Red;
             DrawRect(new Rect2(-16, -36, 32, 4), Colors.Black);
             DrawRect(new Rect2(-16, -36, 32 * frac, 4), color);
+        }
+        if (_shieldHp > 0 &&
+            _runner.World.Faction?.Mechanic is { Kind: SimCore.Sim.MechanicKind.RegeneratingShields } m &&
+            m.MaxShield > 0)
+        {
+            float shieldFrac = (float)_shieldHp / m.MaxShield;
+            DrawRect(new Rect2(-16, -41, 32, 4), Colors.Black);
+            DrawRect(new Rect2(-16, -41, 32 * shieldFrac, 4), Colors.Cyan);
         }
 
         // Patrol glyph: small cyan double-triangle above the unit when patrolling.
