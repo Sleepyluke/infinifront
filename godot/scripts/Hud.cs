@@ -123,22 +123,26 @@ public partial class Hud : CanvasLayer
 
         var selectedUnits = _sel.SelectedUnits.Select(w.GetUnit).ToList();
         bool workerSelected = selectedUnits.Any(u => u?.Harvester is not null);
-        if (workerSelected)
+        if (workerSelected && w.Faction is { } faction)
         {
-            AddButton($"Build Depot ({ReferenceSpecs.Depot.MineralCost})",
-                () => _cmd.ArmBuildGhost(ReferenceSpecs.Depot));
-            AddButton($"Build Barracks ({ReferenceSpecs.Barracks.MineralCost})",
-                () => _cmd.ArmBuildGhost(ReferenceSpecs.Barracks));
+            foreach (var bdef in faction.BuildingList)
+            {
+                var capturedDef = bdef; // capture for lambda
+                AddButton($"Build {capturedDef.Id} ({capturedDef.Spec.MineralCost})",
+                    () => _cmd.ArmBuildGhost(capturedDef));
+            }
         }
 
-        if (_sel.SelectedBuilding != 0 && w.GetBuilding(_sel.SelectedBuilding) is { IsComplete: true, Spec.CanTrain: true } b)
+        if (_sel.SelectedBuilding != 0 && w.GetBuilding(_sel.SelectedBuilding) is { IsComplete: true, Spec.CanTrain: true } b
+            && w.Faction is { } trainFaction)
         {
-            AddButton($"Trooper ({ReferenceSpecs.Trooper.MineralCost})",
-                () => _runner.Enqueue(new TrainCommand(p, b.Id, ReferenceSpecs.Trooper)));
-            AddButton($"Outrider ({ReferenceSpecs.Outrider.MineralCost})",
-                () => _runner.Enqueue(new TrainCommand(p, b.Id, ReferenceSpecs.Outrider)));
-            AddButton($"Tank ({ReferenceSpecs.Tank.MineralCost})",
-                () => _runner.Enqueue(new TrainCommand(p, b.Id, ReferenceSpecs.Tank)));
+            var buildingDefId = b.DefId;
+            foreach (var udef in trainFaction.UnitList.Where(u => u.ProducedBy == buildingDefId))
+            {
+                var capturedUdef = udef; // capture for lambda
+                AddButton($"{capturedUdef.Id} ({capturedUdef.Spec.MineralCost})",
+                    () => _runner.Enqueue(new TrainCommand(p, b.Id, capturedUdef.Id)));
+            }
         }
 
         // Stance buttons: shown when ≥1 owned ARMED unit is selected.

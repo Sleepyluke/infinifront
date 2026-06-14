@@ -11,7 +11,7 @@ public static class TestMap
     /// a rock ridge across the middle with two gaps.</summary>
     public static SimWorld Build()
     {
-        var w = new SimWorld(new MapGrid(Size, Size), seed: 42);
+        var w = new SimWorld(new MapGrid(Size, Size), seed: 42, faction: ReferenceFaction.Def);
 
         foreach (var p in new[] { 0, 1 })
             w.Players[p].Minerals = 300;
@@ -22,8 +22,8 @@ public static class TestMap
                 w.Map.SetPassable(20, y, false);
 
         // player 0 base (top-left)
-        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 4, 4);
-        w.AddCompletedBuilding(0, ReferenceSpecs.Barracks, 8, 4);
+        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 4, 4, "depot");
+        w.AddCompletedBuilding(0, ReferenceSpecs.Barracks, 8, 4, "barracks");
         for (int i = 0; i < 4; i++)
             w.AddResourceNode(2, 8 + i, amount: 500);
         for (int i = 0; i < 3; i++)
@@ -32,8 +32,8 @@ public static class TestMap
             w.SpawnUnit(0, w.Map.CellCenter(10, 8 + i), ReferenceSpecs.Trooper);
 
         // player 1 base (bottom-right, mirrored)
-        w.AddCompletedBuilding(1, ReferenceSpecs.Depot, 34, 34);
-        w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 30, 34);
+        w.AddCompletedBuilding(1, ReferenceSpecs.Depot, 34, 34, "depot");
+        w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 30, 34, "barracks");
         for (int i = 0; i < 4; i++)
             w.AddResourceNode(37, 28 + i, amount: 500);
         for (int i = 0; i < 3; i++)

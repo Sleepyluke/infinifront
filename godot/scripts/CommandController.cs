@@ -15,31 +15,31 @@ public partial class CommandController : Node2D
 
     private bool _attackMoveArmed;
     private bool _patrolArmed;
-    private BuildingSpec? _ghostSpec;     // non-null → placement mode
+    private BuildingDef? _ghostDef;     // non-null → placement mode
 
     public void Init(SimRunner runner, SelectionController sel, ViewSync view)
     {
         _runner = runner; _sel = sel; _view = view;
     }
 
-    public void ArmBuildGhost(BuildingSpec spec) { _attackMoveArmed = false; _patrolArmed = false; _ghostSpec = spec; QueueRedraw(); }
+    public void ArmBuildGhost(BuildingDef def) { _attackMoveArmed = false; _patrolArmed = false; _ghostDef = def; QueueRedraw(); }
 
     public override void _UnhandledInput(InputEvent e)
     {
         switch (e)
         {
-            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.A } when _ghostSpec is null && _sel.SelectedUnits.Count > 0:
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.A } when _ghostDef is null && _sel.SelectedUnits.Count > 0:
                 _attackMoveArmed = true;
                 _patrolArmed = false;
                 break;
-            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.P } when _ghostSpec is null && _sel.SelectedUnits.Count > 0:
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.P } when _ghostDef is null && _sel.SelectedUnits.Count > 0:
                 _patrolArmed = true;
                 _attackMoveArmed = false;
                 break;
             case InputEventKey { Pressed: true, Keycode: Key.Escape }:
                 _attackMoveArmed = false;
                 _patrolArmed = false;
-                _ghostSpec = null;
+                _ghostDef = null;
                 QueueRedraw();
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } when _attackMoveArmed:
@@ -52,12 +52,12 @@ public partial class CommandController : Node2D
                 _patrolArmed = false;
                 GetViewport().SetInputAsHandled();
                 break;
-            case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } when _ghostSpec is not null:
+            case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } when _ghostDef is not null:
                 TryPlaceGhost(GetGlobalMousePosition());
                 GetViewport().SetInputAsHandled();
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true }:
-                if (_ghostSpec is not null) { _ghostSpec = null; QueueRedraw(); }
+                if (_ghostDef is not null) { _ghostDef = null; QueueRedraw(); }
                 else ContextOrder(GetGlobalMousePosition());
                 GetViewport().SetInputAsHandled();
                 break;
@@ -133,25 +133,25 @@ public partial class CommandController : Node2D
 
     private void TryPlaceGhost(Vector2 worldPx)
     {
-        var spec = _ghostSpec!;
+        var def = _ghostDef!;
         var (cx, cy) = RenderMath.PxToCell(worldPx);
         var w = _runner.World;
         var worker = SelectedIds().Select(w.GetUnit).FirstOrDefault(u => u?.Harvester is not null);
-        if (worker is null) { _ghostSpec = null; QueueRedraw(); return; }
-        _runner.Enqueue(new BuildCommand(_sel.ControlledPlayer, worker.Id, spec, cx, cy));
-        _ghostSpec = null;
+        if (worker is null) { _ghostDef = null; QueueRedraw(); return; }
+        _runner.Enqueue(new BuildCommand(_sel.ControlledPlayer, worker.Id, def.Id, cx, cy));
+        _ghostDef = null;
         QueueRedraw();
     }
 
-    public override void _Process(double delta) { if (_ghostSpec is not null) QueueRedraw(); }
+    public override void _Process(double delta) { if (_ghostDef is not null) QueueRedraw(); }
 
     public override void _Draw()
     {
-        if (_ghostSpec is null) return;
+        if (_ghostDef is null) return;
         var (cx, cy) = RenderMath.PxToCell(GetGlobalMousePosition());
-        bool ok = FootprintFree(cx, cy, _ghostSpec.Width, _ghostSpec.Height);
+        bool ok = FootprintFree(cx, cy, _ghostDef.Spec.Width, _ghostDef.Spec.Height);
         var rect = new Rect2(RenderMath.CellToPx(cx, cy),
-            new Vector2(_ghostSpec.Width * RenderMath.CellPx, _ghostSpec.Height * RenderMath.CellPx));
+            new Vector2(_ghostDef.Spec.Width * RenderMath.CellPx, _ghostDef.Spec.Height * RenderMath.CellPx));
         DrawRect(rect, (ok ? Colors.Lime : Colors.Red) with { A = 0.35f });
         DrawRect(rect, ok ? Colors.Lime : Colors.Red, filled: false, width: 2);
     }
