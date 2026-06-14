@@ -48,7 +48,8 @@ public class DeterminismTests
             {
                 new UpgradeDef("dmg1", 1, "rax", System.Array.Empty<string>(), new[] { "*" },
                     UpgradeStat.Damage, Fix.FromInt(3), 50, 20),
-            });
+            },
+            mechanic: new MechanicDef(MechanicKind.RegeneratingShields, MaxShield: 15, RegenPerTick: 1, RegenDelayTicks: 10));
 
         var w = new SimWorld(map, seed: 1234, faction: scenarioFaction);
         w.Players[0].Minerals = 500;
@@ -232,6 +233,6 @@ public class DeterminismTests
         Assert.Equal(GoldenTrajectoryHash, combined);
     }
 
-    private const ulong GoldenTrajectoryHash = 6959374437731592347UL;
+    private const ulong GoldenTrajectoryHash = 5141900307592480923UL;
 
 }

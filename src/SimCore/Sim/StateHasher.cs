@@ -22,6 +22,8 @@ public static class StateHasher
     /// Building research slot (ResearchingId + ResearchTicksRemaining) IS hashed (v4, Task 7).
     /// PlayerState.AppliedUpgrades IS hashed (v4, Task 7) — list is kept sorted (Ordinal) so
     /// iteration order is deterministic regardless of research-completion order.
+    /// Unit shield state (ShieldHp + TicksSinceDamaged) IS hashed (v5, Task 5) — folded at
+    /// the end of the per-unit loop, after patrol fields.
     /// MapGrid passability IS hashed (mutable mid-run since buildings
     /// and node depletion), packed 64 cells per Mix, along with Map.Version.
     /// Patterns for new state: nullable objects need a presence marker before their
@@ -77,6 +79,8 @@ public static class StateHasher
             h = Mix(h, (ulong)u.PatrolA.Y.Raw);
             h = Mix(h, (ulong)u.PatrolB.X.Raw);
             h = Mix(h, (ulong)u.PatrolB.Y.Raw);
+            h = Mix(h, (ulong)u.ShieldHp);
+            h = Mix(h, (ulong)u.TicksSinceDamaged);
         }
 
         foreach (var p in world.Players)
