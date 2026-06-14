@@ -41,6 +41,22 @@ public class FactionPackLoaderTests
     }
 
     [Fact]
+    public void Numeric_enum_value_returns_error()
+    {
+        // Valid JSON but an out-of-range numeric enum value -> must be rejected, not silently cast.
+        string json = """
+        { "id": "x", "name": "X",
+          "units": [],
+          "buildings": [ { "id": "b", "tier": 1, "maxHp": 10, "width": 1, "height": 1, "mineralCost": 1, "buildTimeTicks": 1 } ],
+          "upgrades": [ { "id": "g", "tier": 1, "researchedAt": "b", "targetUnitDefIds": ["*"],
+                          "stat": 99, "delta": 1, "mineralCost": 1, "researchTicks": 1 } ] }
+        """;
+        var result = FactionPackLoader.LoadFromJson(json);
+        Assert.Null(result.Faction);
+        Assert.NotEmpty(result.Errors);
+    }
+
+    [Fact]
     public void Referentially_broken_pack_returns_def_plus_validate_errors()
     {
         // Parses fine, but the unit's producer building does not exist -> Validate() catches it.

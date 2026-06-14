@@ -20,7 +20,9 @@ public static class PackJson
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
         };
         o.Converters.Add(new FixJsonConverter());
-        o.Converters.Add(new JsonStringEnumConverter());
+        // Names only: reject numeric enum values (e.g. "stat": 99) so a degenerate, undefined
+        // enum can never reach the engine. Unknown names are likewise rejected (JsonException).
+        o.Converters.Add(new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false));
         return o;
     }
 }
