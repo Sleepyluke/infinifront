@@ -28,5 +28,6 @@ public sealed class Building
 public sealed class TrainingItem
 {
     public UnitSpec Spec { get; init; } = null!;
+    public string UnitDefId { get; init; } = "";
     public int RemainingTicks { get; set; }
 }

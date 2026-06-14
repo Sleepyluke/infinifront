@@ -94,7 +94,7 @@ public sealed partial class SimWorld
             // If spawn returns 0 (cell claimed this tick by a mover), don't dequeue — retry next tick.
             // Note: MoveUnits runs before UpdateProduction and FindSpawnCell already filters occupied
             // cells, so this guard is defense-in-depth against future reordering, not a live threat.
-            var spawned = SpawnUnit(b.OwnerId, Map.CellCenter(cell.Value.x, cell.Value.y), item.Spec);
+            var spawned = SpawnUnit(b.OwnerId, Map.CellCenter(cell.Value.x, cell.Value.y), item.Spec, item.UnitDefId);
             if (spawned == 0) continue;
             b.Queue.RemoveAt(0);
             _players[b.OwnerId].SupplyUsed -= item.Spec.SupplyCost;

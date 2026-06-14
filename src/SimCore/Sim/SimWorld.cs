@@ -43,10 +43,10 @@ public sealed partial class SimWorld
         return Spawn(ownerId, pos, speedPerTick, hp, supplyCost: 0, clone, harvester: null, sightRange: 7);
     }
 
-    public int SpawnUnit(int ownerId, FixVec pos, UnitSpec spec) =>
-        Spawn(ownerId, pos, spec.Speed, spec.MaxHp, spec.SupplyCost, spec.Weapon?.Instantiate(), spec.Harvester, spec.SightRange);
+    public int SpawnUnit(int ownerId, FixVec pos, UnitSpec spec, string defId = "") =>
+        Spawn(ownerId, pos, spec.Speed, spec.MaxHp, spec.SupplyCost, spec.Weapon?.Instantiate(), spec.Harvester, spec.SightRange, defId);
 
-    private int Spawn(int ownerId, FixVec pos, Fix speedPerTick, int hp, int supplyCost, Weapon? weapon, HarvesterSpec? harvester, int sightRange)
+    private int Spawn(int ownerId, FixVec pos, Fix speedPerTick, int hp, int supplyCost, Weapon? weapon, HarvesterSpec? harvester, int sightRange, string defId = "")
     {
         EnsureOccupancy();
         var (cx, cy) = Map.WorldToCell(pos);
@@ -55,7 +55,7 @@ public sealed partial class SimWorld
         var u = new Unit
         {
             Id = _nextId++, OwnerId = ownerId, Position = pos, SpeedPerTick = speedPerTick,
-            Hp = hp, SupplyCost = supplyCost, Weapon = weapon, Harvester = harvester,
+            Hp = hp, SupplyCost = supplyCost, DefId = defId, Weapon = weapon, Harvester = harvester,
             SightRange = sightRange
         };
         _units.Add(u);
@@ -192,7 +192,7 @@ public sealed partial class SimWorld
                 if (ps.SupplyUsed + udef.Spec.SupplyCost > ps.SupplyCap) break;
                 ps.Minerals -= udef.Spec.MineralCost;
                 ps.SupplyUsed += udef.Spec.SupplyCost; // reserve supply at enqueue
-                trainer.Queue.Add(new TrainingItem { Spec = udef.Spec, RemainingTicks = udef.Spec.BuildTimeTicks });
+                trainer.Queue.Add(new TrainingItem { Spec = udef.Spec, UnitDefId = tc.UnitDefId, RemainingTicks = udef.Spec.BuildTimeTicks });
                 break;
             case HarvestCommand hc:
                 if (GetNode(hc.NodeId) is null) break;
