@@ -1054,3 +1054,71 @@ Co-Authored-By: RuFlo <ruv@ruv.net>"
 - **Spec coverage:** Fix converter (Task 1), DTO layer + options (Task 2), PackMapper feeding ctor lists (Task 3), FactionPackLoader + error handling + Validate-on-load (Task 4), reference pack export + round-trip (Task 5), new `SimCore.Packs` library (Task 1), no determinism change (Task 6). All spec "In scope" items map to a task.
 - **Placeholders:** none — every code/test step has complete code; every command has an expected result.
 - **Type consistency:** DTO field order matches `UnitSpec`/`BuildingSpec`/`UpgradeDef`/`MechanicDef` ctors verified against source. `PackMapper` method names and `FactionDefAssert.DeepEqual` / `RepoPaths.Pack` / `PackJson.Options` / `FactionPackLoader.{LoadFromJson,ToJson}` used consistently across tasks.
+
+---
+
+## Execution Outcome (3d-1, completed 2026-06-14)
+
+All 6 tasks implemented via subagent-driven development (foreground implementers +
+two-stage spec/quality review per task). Final state on branch
+`feat/pack-serialization`: **264 SimCore tests + 6 SpriteSlicer tests, 0 failures,
+Debug == Release**. `SimCore` is byte-for-byte untouched (empty `git diff master --
+src/SimCore/`), so the golden trajectory hash is unchanged at
+`5141900307592480923UL` and all determinism/replay tests pass.
+
+The adversarial quality reviews caught (and we fixed) four real latent bugs the
+plan's verbatim code would have shipped — all are landmines worth honoring in 3d-2:
+
+1. **`Fix` converter decimal overflow:** `value * 65536m` could throw
+   `OverflowException` (not `JsonException`) for inputs in the band ~(1.2e24, 7.9e28]
+   that pass `TryGetDecimal`. Fixed by wrapping the multiply → `JsonException`.
+2. **Zero-valued enums dropped:** `UpgradeStat.Damage` and `MechanicKind.None` are
+   the `0` members, so the global `WhenWritingDefault` omitted the `stat`/`kind`
+   keys. Fixed with `[property: JsonIgnore(Condition = Never)]` on those two enum
+   props.
+3. **`SightRange == 0` round-trip loss:** `WhenWritingDefault` compares to
+   `default(int)==0`, but the DTO ctor restore-default is non-zero (7 unit / 8
+   building) — so a 0 was omitted and read back as 7/8. Same `JsonIgnore(Never)`
+   remedy on both `SightRange` props. **General landmine:** under
+   `WhenWritingDefault`, ANY future DTO field whose ctor default ≠ `default(T)` is
+   silently lossy. New DTO fields must either default to `0/false/null` or carry
+   `[JsonIgnore(Condition = Never)]`.
+4. **`LoadFromJson` not total:** `def.Validate()` ran outside the try, so valid JSON
+   with `null` inside an inner string list (`requires:[null]`,
+   `targetUnitDefIds:[null]`, `researchedAt:null`) threw `ArgumentNullException`
+   from `Dictionary.TryGetValue(null)`; and `LoadFromJson(null)` threw ANE. Fixed
+   with a null/whitespace guard + a try/catch around `Validate()`. **3d-2 input:**
+   the richer validator should turn these null-element cases into proper *error
+   strings* (e.g. "unit 'u' requires entry 0 is null") rather than a generic caught
+   exception, and return the def + errors for the fix-it loop.
+
+## Plan-3d-2 Inputs (carry-forward)
+
+3d-1 delivered serialization/loading. 3d-2 (validation & authoring) builds on it:
+
+- **Validator location:** add the richer checks as a separate pass over `FactionDef`
+  (e.g. a `PackValidator` in `SimCore.Packs`), NOT inside `FactionDef.Validate()`
+  (that stays the structural/referential seed). `LoadFromJson` already returns the
+  def + Validate() errors; 3d-2 layers additional warnings/errors on top.
+- **Point-budget balance formula:** additive weighted power sum over the catalog
+  (unit stat weights × counts, building/upgrade/mechanic contributions) with a
+  cost-tolerance band that WARNS rather than hard-rejects (a faction outside the
+  band is unusual, not illegal — gaps are identity).
+- **Other 3d-2 checks:** tier monotonicity (a tier-N thing's prereqs resolve to
+  tier ≤ N), producer-reachability (every unit's ProducedBy/Requires chain is
+  buildable from t0), structural minimums (≥1 depot-or-producer, ≥1 trainable unit),
+  and null-element structural errors (see Execution Outcome #4 — turn the caught
+  `ArgumentNullException` cases into actionable messages).
+- **Machine-readable fix-it output:** each finding carries a code + target id +
+  human message so the Faction Forge prompt can auto-repair.
+- **Faction Forge prompt doc:** authoring guide + JSON schema-by-example using
+  `packs/reference/faction.json` as the worked example.
+- **Wire-format facts to honor:** Fix = decimal JSON number (the `FixJsonConverter`,
+  decimal-exact, now total against overflow/range; humans may write `0.2`, it maps
+  to raw 13107). Enums by name (zero members forced-present). camelCase keys.
+  Omitted booleans/zeros take engine defaults — but see the `WhenWritingDefault`
+  landmine above for fields with non-zero ctor defaults. Collections optional
+  (null → empty). `LoadFromJson` is total (never throws).
+- **Determinism:** packs are setup-time; the converter is decimal-based so two
+  players loading the same pack get a bit-identical FactionDef. A pack content hash
+  for multiplayer verification is deferred to plan 5.
