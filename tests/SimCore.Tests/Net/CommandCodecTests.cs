@@ -132,8 +132,21 @@ public class CommandCodecTests
         var back = CommandCodec.FrameFromBytes(CommandCodec.FrameToBytes(frame));
         Assert.Equal(3, back.Commands.Count);
         Assert.IsType<MoveCommand>(back.Commands[0]);
-        Assert.IsType<TrainCommand>(back.Commands[1]);
-        Assert.IsType<DestroyCommand>(back.Commands[2]);
+        // Assert field values of NON-first commands too: a command's payload must survive being
+        // preceded by another command's variable-length bytes (catches stream-misalignment bugs).
+        var t = Assert.IsType<TrainCommand>(back.Commands[1]);
+        Assert.Equal(2, t.BuildingId);
+        Assert.Equal("marine", t.UnitDefId);
+        var d = Assert.IsType<DestroyCommand>(back.Commands[2]);
+        Assert.Equal(new[] { 9 }, d.Ids);
+    }
+
+    [Fact]
+    public void EmptyUnitIds_RoundTrips()
+    {
+        var c = (MoveCommand)RoundTripOne(new MoveCommand(1, System.Array.Empty<int>(), new FixVec(Fix.FromInt(3), Fix.FromInt(4))));
+        Assert.Empty(c.UnitIds);
+        Assert.Equal(new FixVec(Fix.FromInt(3), Fix.FromInt(4)), c.Target);
     }
 
     [Fact]
