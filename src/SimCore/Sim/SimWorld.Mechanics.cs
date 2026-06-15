@@ -2,16 +2,14 @@ namespace SimCore.Sim;
 
 public sealed partial class SimWorld
 {
-    /// <summary>The mechanic governing this unit. Today: the shared world Faction's mechanic.
-    /// Structured as a per-unit accessor so it becomes per-player when packs let each player
-    /// pick a faction (plan 5). Returns null when there is no mechanic.</summary>
-    private MechanicDef? MechanicFor(Unit u) => Faction?.Mechanic;
+    /// <summary>The mechanic governing this unit: its OWNER's faction mechanic. Null when none.</summary>
+    private MechanicDef? MechanicFor(Unit u) => FactionFor(u.OwnerId)?.Mechanic;
 
     private bool HasShields(Unit u) => MechanicFor(u) is { Kind: MechanicKind.RegeneratingShields };
 
-    /// <summary>Initial shield pool for a unit spawned under the current faction.</summary>
-    private int InitialShield() =>
-        Faction?.Mechanic is { Kind: MechanicKind.RegeneratingShields } m ? m.MaxShield : 0;
+    /// <summary>Initial shield pool for a unit spawned under its owner's faction.</summary>
+    private int InitialShield(int ownerId) =>
+        FactionFor(ownerId)?.Mechanic is { Kind: MechanicKind.RegeneratingShields } m ? m.MaxShield : 0;
 
     /// <summary>Applies combat damage to a unit, shield-first. Resets the damage timer
     /// so shield regen pauses. Works uniformly: a unit with no shields has ShieldHp 0,
@@ -24,19 +22,15 @@ public sealed partial class SimWorld
         target.TicksSinceDamaged = 0;
     }
 
-    /// <summary>Per-tick faction-mechanic update. Today: regenerating shields.
-    /// Future mechanics dispatch here on MechanicKind. Early-returns when the faction has no
-    /// shield mechanic, so non-mechanic factions see zero state churn (golden-safe).
-    /// TicksSinceDamaged: transitions 0->1 on first step (or post-damage reset), then increments.
-    /// When ApplyDamage (UpdateCombat, before UpdateShields) resets to 0, UpdateShields
-    /// transitions it back to 1, then it's 1 at tick end (not 0). This is acceptable: the
-    /// countdown started fresh that tick. Regen delay must account for this (+1 expected).</summary>
+    /// <summary>Per-tick faction-mechanic update (regenerating shields), keyed per unit off
+    /// its owner's faction. Units whose owner has no shield mechanic are skipped (zero churn).
+    /// See the TicksSinceDamaged note: ApplyDamage resets to 0 (UpdateCombat, before this),
+    /// UpdateShields transitions 0->1 then increments; regen delay accounts for the +1.</summary>
     private void UpdateShields()
     {
-        if (Faction?.Mechanic is not { Kind: MechanicKind.RegeneratingShields } m) return;
         foreach (var u in _units)
         {
-            if (!HasShields(u)) continue;
+            if (MechanicFor(u) is not { Kind: MechanicKind.RegeneratingShields } m) continue;
             if (u.TicksSinceDamaged == 0)
                 u.TicksSinceDamaged = 1;
             else
