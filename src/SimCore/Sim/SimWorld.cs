@@ -74,7 +74,7 @@ public sealed partial class SimWorld
         {
             Id = _nextId++, OwnerId = ownerId, Position = pos, SpeedPerTick = speedPerTick,
             Hp = hp, SupplyCost = supplyCost, DefId = defId, Weapon = weapon, Harvester = harvester,
-            SightRange = sightRange, ShieldHp = InitialShield()
+            SightRange = sightRange, ShieldHp = InitialShield(ownerId)
         };
         _units.Add(u);
         _byId[u.Id] = u;
