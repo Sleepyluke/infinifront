@@ -81,6 +81,13 @@ public class LockstepCoordinatorTests
     }
 
     [Fact]
+    public void Ctor_Rejects_Local_Player_Not_Among_Humans()
+    {
+        Assert.Throws<System.ArgumentException>(() =>
+            new LockstepCoordinator(localPlayerId: 5, new[] { 0, 1 }, inputDelay: 0));
+    }
+
+    [Fact]
     public void Two_Peers_Step_Identically_Over_Many_Ticks()
     {
         var a = new LockstepCoordinator(localPlayerId: 0, new[] { 0, 1 }, inputDelay: 2);

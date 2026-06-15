@@ -24,6 +24,9 @@ public sealed class LockstepCoordinator
         System.Array.Sort(arr);
         _humanPlayerIds = arr;
         _inputDelay = inputDelay;
+        if (System.Array.IndexOf(arr, localPlayerId) < 0)
+            throw new System.ArgumentException(
+                $"localPlayerId {localPlayerId} must be one of the human players", nameof(localPlayerId));
     }
 
     /// <summary>The next execution tick that <see cref="TryDequeueStep"/> will dispatch.</summary>
@@ -39,8 +42,14 @@ public sealed class LockstepCoordinator
         return frame;
     }
 
-    /// <summary>Buffer a remote human's frame.</summary>
-    public void Receive(CommandFrame frame) => _frames[(frame.Tick, frame.PlayerId)] = frame;
+    /// <summary>Buffer a remote human's frame. Frames for already-dispatched ticks are ignored
+    /// (a late/duplicate packet can't change a tick that already stepped — dropping it avoids
+    /// unbounded buffer growth under packet reorder/duplication).</summary>
+    public void Receive(CommandFrame frame)
+    {
+        if (frame.Tick < _stepTick) return;
+        _frames[(frame.Tick, frame.PlayerId)] = frame;
+    }
 
     /// <summary>If the next execution tick is ready, output its deterministically-merged commands
     /// and advance; else false (a stall — waiting on a peer's frame). Execution ticks within the
