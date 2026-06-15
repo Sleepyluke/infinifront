@@ -1,4 +1,5 @@
 using Godot;
+using SimCore.Sim;
 
 namespace LlmRts.Godot;
 
@@ -14,7 +15,9 @@ public partial class Main : Node2D
     public override void _Ready()
     {
         Runner = new SimRunner { Name = "SimRunner" };
-        Runner.Init(TestMap.Build());
+        Runner.Init(MatchConfig.Configured
+            ? MatchSetup.BuildStandard1v1(MatchConfig.Human, MatchConfig.Cpu, MatchConfig.Difficulty, seed: 42)
+            : TestMap.Build());
         AddChild(Runner);
 
         var mapView = new MapView { Name = "MapView" };
@@ -62,6 +65,18 @@ public partial class Main : Node2D
         _minimap.Init(Runner, camera, Selection);
 
         GD.Print($"LlmRts boot OK units={Runner.World.Units.Count} buildings={Runner.World.Buildings.Count}");
+
+        if (!MatchConfig.Configured)
+        {
+            Runner.Paused = true;                 // hold the sim behind the menu
+            AddChild(new MenuScreen { Name = "Menu" });
+        }
+        else
+        {
+            var gameOver = new GameOverScreen { Name = "GameOver" };
+            AddChild(gameOver);
+            gameOver.Init(Runner);
+        }
     }
 
     public override void _UnhandledKeyInput(InputEvent e)
