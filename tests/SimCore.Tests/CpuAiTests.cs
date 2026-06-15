@@ -115,4 +115,43 @@ public class CpuAiTests
             if (u.OwnerId == 1 && u.Weapon is not null && (u.IsAttackMoving || u.HasMoveOrder)) attacking = true;
         Assert.True(attacking, "expected CPU combat units to be attack-moving toward the enemy base");
     }
+
+    private static SimWorld CpuVsCpuWorld()
+    {
+        var w = new SimWorld(new MapGrid(40, 40), seed: 7, new FactionDef?[] { ReferenceFaction.Def, ReferenceFaction.Def });
+        w.Players[0].Minerals = 800;
+        w.Players[1].Minerals = 800;
+        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 3, 3, "depot");
+        w.AddCompletedBuilding(0, ReferenceSpecs.Barracks, 6, 3, "barracks");
+        w.AddCompletedBuilding(1, ReferenceSpecs.Depot, 34, 34, "depot");
+        w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 31, 34, "barracks");
+        w.SpawnUnit(0, w.Map.CellCenter(5, 6), ReferenceSpecs.Fabber, "fabber");
+        w.SpawnUnit(1, w.Map.CellCenter(33, 32), ReferenceSpecs.Fabber, "fabber");
+        w.AddResourceNode(8, 8, 5000);
+        w.AddResourceNode(30, 30, 5000);
+        w.SetCpu(0, AiDifficulty.Easy);
+        w.SetCpu(1, AiDifficulty.Easy);
+        return w;
+    }
+
+    [Fact]
+    public void Cpu_Vs_Cpu_Is_Deterministic_Across_Runs()
+    {
+        var a = CpuVsCpuWorld();
+        var b = CpuVsCpuWorld();
+        for (int t = 0; t < 400; t++)
+        {
+            a.Step(Empty);
+            b.Step(Empty);
+            Assert.Equal(StateHasher.Hash(a), StateHasher.Hash(b));
+        }
+    }
+
+    [Fact]
+    public void Cpu_Vs_Cpu_Produces_Activity()
+    {
+        var w = CpuVsCpuWorld();
+        for (int t = 0; t < 400; t++) w.Step(Empty);
+        Assert.True(w.Units.Count > 2, $"expected CPUs to build up forces, got {w.Units.Count} units");
+    }
 }
