@@ -17,6 +17,13 @@ public sealed partial class SimWorld
     private const int MediumAttackThreshold = 4;
     private const int MediumAttackInterval = 150;
 
+    // Hard-tier tunables: strong economy, rebuilds, reactive attack (defend / commit-when-ahead).
+    private const int HardWorkerCap = 14;
+    private const int HardSupplyBuffer = 4;
+    private const int HardMinArmy = 8;
+    private const int HardAttackInterval = 120;
+    private const int HardDefendRadius = 10; // cells
+
     /// <summary>Mark a player as CPU-controlled at the given difficulty (setup-time).</summary>
     public void SetCpu(int playerId, AiDifficulty difficulty)
     {
@@ -37,7 +44,8 @@ public sealed partial class SimWorld
             switch (_players[p].Difficulty)
             {
                 case AiDifficulty.Medium: MediumDecide(p); break;
-                default: EasyDecide(p); break; // Easy (Hard added in Task 3)
+                case AiDifficulty.Hard:   HardDecide(p);   break;
+                default: EasyDecide(p); break; // Easy
             }
         }
     }
@@ -280,5 +288,63 @@ public sealed partial class SimWorld
         RebuildProduction(playerId);
         TrainCheapestCombat(playerId);
         MaybeAttack(playerId, MediumAttackThreshold, MediumAttackInterval);
+    }
+
+    /// <summary>Center of the first owned building (stable order) with an enemy combat unit within
+    /// HardDefendRadius cells; null if none threatened.</summary>
+    private FixVec? ThreatenedBuildingCenter(int playerId)
+    {
+        long radiusSq = Fix.FromInt(HardDefendRadius * HardDefendRadius).Raw;
+        foreach (var b in _buildings)
+        {
+            if (b.OwnerId != playerId) continue;
+            var c = CenterOf(b);
+            foreach (var u in _units)
+            {
+                if (u.OwnerId == playerId || u.Weapon is null) continue;
+                if ((u.Position - c).LengthSquared().Raw <= radiusSq) return c;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>Count of all non-p units with a weapon (the enemy army; full-information).</summary>
+    private int EnemyCombatCount(int playerId)
+    {
+        int c = 0;
+        foreach (var u in _units) if (u.OwnerId != playerId && u.Weapon is not null) c++;
+        return c;
+    }
+
+    /// <summary>Reactive attack: defend a threatened base; else commit only when at-or-ahead of the
+    /// enemy army (and past a minimum), on cadence; otherwise keep massing.</summary>
+    private void ReactiveAttack(int playerId)
+    {
+        var threat = ThreatenedBuildingCenter(playerId);
+        if (threat is not null)
+        {
+            var defenders = CombatUnitIds(playerId);
+            if (defenders.Length > 0) Apply(new AttackMoveCommand(playerId, defenders, threat.Value));
+            return;
+        }
+        int own = CountUnits(playerId, combat: true);
+        if (own >= HardMinArmy && own >= EnemyCombatCount(playerId) && Tick % HardAttackInterval == 0)
+        {
+            var target = EnemyBaseCenter(playerId);
+            if (target is not null)
+            {
+                var army = CombatUnitIds(playerId);
+                if (army.Length > 0) Apply(new AttackMoveCommand(playerId, army, target.Value));
+            }
+        }
+    }
+
+    /// <summary>Hard tier: strong economy, rebuild, reactive attack (defend / commit-when-ahead).</summary>
+    private void HardDecide(int playerId)
+    {
+        MacroEconomy(playerId, HardWorkerCap, HardSupplyBuffer);
+        RebuildProduction(playerId);
+        TrainCheapestCombat(playerId);
+        ReactiveAttack(playerId);
     }
 }
