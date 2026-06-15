@@ -160,7 +160,7 @@ public sealed partial class SimWorld
     /// <summary>Center of the first enemy building (lowest id, stable order); null if none.</summary>
     private FixVec? EnemyBaseCenter(int p)
     {
-        foreach (var b in _buildings) if (b.OwnerId != p) return CenterOf(b);
+        foreach (var b in _buildings) if (!SameTeam(b.OwnerId, p)) return CenterOf(b);
         return null;
     }
 
@@ -301,7 +301,7 @@ public sealed partial class SimWorld
             var c = CenterOf(b);
             foreach (var u in _units)
             {
-                if (u.OwnerId == playerId || u.Weapon is null) continue;
+                if (SameTeam(u.OwnerId, playerId) || u.Weapon is null) continue;
                 if ((u.Position - c).LengthSquared().Raw <= radiusSq) return c;
             }
         }
@@ -312,7 +312,7 @@ public sealed partial class SimWorld
     private int EnemyCombatCount(int playerId)
     {
         int c = 0;
-        foreach (var u in _units) if (u.OwnerId != playerId && u.Weapon is not null) c++;
+        foreach (var u in _units) if (!SameTeam(u.OwnerId, playerId) && u.Weapon is not null) c++;
         return c;
     }
 
