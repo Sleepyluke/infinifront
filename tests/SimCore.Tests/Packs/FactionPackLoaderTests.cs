@@ -139,4 +139,23 @@ public class FactionPackLoaderTests
         Assert.Null(result.Faction);
         Assert.NotEmpty(result.Errors);
     }
+
+    [Fact]
+    public void LoadAndValidate_reference_pack_is_clean()
+    {
+        string json = FactionPackLoader.ToJson(ReferenceFaction.Def);
+        var report = FactionPackLoader.LoadAndValidate(json);
+        Assert.NotNull(report.Faction);
+        Assert.Empty(report.LoadErrors);
+        Assert.DoesNotContain(report.Findings, x => x.Severity == Severity.Error);
+    }
+
+    [Fact]
+    public void LoadAndValidate_hard_failure_has_no_findings()
+    {
+        var report = FactionPackLoader.LoadAndValidate("{ not valid json ");
+        Assert.Null(report.Faction);
+        Assert.NotEmpty(report.LoadErrors);
+        Assert.Empty(report.Findings);
+    }
 }
