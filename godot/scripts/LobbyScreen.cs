@@ -33,6 +33,13 @@ public partial class LobbyScreen : CanvasLayer
         panel.SetAnchorsPreset(Control.LayoutPreset.Center);
 
         box.AddChild(new Label { Text = _isHost ? "Lobby (Host)" : "Lobby — waiting for host", HorizontalAlignment = HorizontalAlignment.Center });
+        box.AddChild(new Label
+        {
+            Text = _isHost
+                ? "Kind = Open seat (a joiner can Claim) or CPU.   Team A vs Team B (same team = allies).\nEvery seat must be filled — Claim it, or set it to CPU — before Start."
+                : "Claim an Open seat and pick your faction, then wait for the host to start.",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        });
         _rows = new VBoxContainer();
         box.AddChild(_rows);
 
@@ -50,11 +57,15 @@ public partial class LobbyScreen : CanvasLayer
             _start.Pressed += OnStart;
             box.AddChild(_start);
 
-            // Host's initial config: slot 0 = the host (Human, team 0), slot 1 = an Open seat (team 1).
+            // Default to a ready-to-go 2v2: you + an Open ally seat (Team A) vs two CPUs (Team B).
+            // Flip the Open seat to CPU for a 1-human test, or let the other window Join + Claim it.
+            string fid = _factions[0].Faction.Id;
             _slots = new List<LobbySlot>
             {
-                new(SlotKind.Human, 0, _factions[0].Faction.Id, AiDifficulty.Easy, 1), // host peer id = 1
-                new(SlotKind.Open,  1, _factions[0].Faction.Id, AiDifficulty.Easy, 0),
+                new(SlotKind.Human, 0, fid, AiDifficulty.Easy, 1), // slot 0 = you (host), Team A
+                new(SlotKind.Open,  0, fid, AiDifficulty.Easy, 0), // slot 1 = ally seat, Team A
+                new(SlotKind.Cpu,   1, fid, AiDifficulty.Easy, 0), // slot 2 = enemy CPU, Team B
+                new(SlotKind.Cpu,   1, fid, AiDifficulty.Easy, 0), // slot 3 = enemy CPU, Team B
             };
 
             _net.PeerConnectedToLobby += OnPeerJoined;
@@ -110,15 +121,20 @@ public partial class LobbyScreen : CanvasLayer
             var s = _slots[i];
             var row = new HBoxContainer();
             bool mine = s.OccupantPeerId == myPeer && s.Kind == SlotKind.Human;
-            row.AddChild(new Label { Text = $"Slot {i}: {s.Kind} (team {(s.Team == 0 ? "A" : "B")})" });
+            string who = s.Kind == SlotKind.Open ? "Open seat"
+                : s.Kind == SlotKind.Cpu ? "CPU"
+                : s.OccupantPeerId == myPeer ? "You"
+                : s.OccupantPeerId == 1 ? "Host"
+                : $"Player {s.OccupantPeerId}";
+            row.AddChild(new Label { Text = $"Slot {i}:  {who}   ·   Team {(s.Team == 0 ? "A" : "B")}" });
 
             if (_isHost)
             {
-                // Host can flip Open<->Cpu and toggle team on non-occupied-by-remote slots.
-                var kind = new Button { Text = "Kind" };
+                // Buttons show the CURRENT value and toggle it on press. Slot 0 is always the host.
+                var kind = new Button { Text = s.Kind == SlotKind.Cpu ? "Kind: CPU" : "Kind: Open" };
                 kind.Pressed += () => { _slots[i] = s with { Kind = s.Kind == SlotKind.Cpu ? SlotKind.Open : SlotKind.Cpu, OccupantPeerId = 0 }; PushAndRender(); };
-                if (i != 0) row.AddChild(kind);   // slot 0 is always the host
-                var team = new Button { Text = "Team" };
+                if (i != 0) row.AddChild(kind);
+                var team = new Button { Text = $"Team {(s.Team == 0 ? "A" : "B")}" };
                 team.Pressed += () => { _slots[i] = s with { Team = 1 - s.Team }; PushAndRender(); };
                 row.AddChild(team);
             }
@@ -143,7 +159,7 @@ public partial class LobbyScreen : CanvasLayer
 
             if (_isHost && s.Kind == SlotKind.Cpu)
             {
-                var diff = new Button { Text = s.Difficulty.ToString() };
+                var diff = new Button { Text = $"Difficulty: {s.Difficulty}" };
                 diff.Pressed += () => { var nd = (AiDifficulty)(((int)s.Difficulty + 1) % 3); _slots[i] = s with { Difficulty = nd }; PushAndRender(); };
                 row.AddChild(diff);
             }
