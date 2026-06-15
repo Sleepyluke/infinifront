@@ -67,6 +67,11 @@ public partial class NetSession : Node
     private void OnPeerDisconnected(long peerId) => PeerDropped?.Invoke();
     private void OnServerDisconnected() => PeerDropped?.Invoke();
 
+    // CORRECTNESS INVARIANT — all RPCs below intentionally share the default reliable channel (0).
+    // The host emits StartMatchRpc (which makes the client subscribe to frames in InitNetworked)
+    // BEFORE the primed frame RPCs; same-channel reliable delivery is ordered, so the client always
+    // subscribes before any frame arrives. Do NOT add a per-method `channel:` to one of these without
+    // the others — splitting channels can reorder StartMatchRpc after the frames → permanent startup stall.
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
     private void StartMatchRpc(long seedBits, int assignedPlayerId)
     {
