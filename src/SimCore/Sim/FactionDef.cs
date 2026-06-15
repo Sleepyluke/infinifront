@@ -56,14 +56,14 @@ public sealed class FactionDef
             else if (GetBuilding(u.ProducedBy) is null)
                 errors.Add($"unit '{u.Id}' ProducedBy references unknown building '{u.ProducedBy}'");
             foreach (var req in u.Requires)
-                if (GetBuilding(req) is null)
-                    errors.Add($"unit '{u.Id}' requires unknown building '{req}'");
+                if (GetBuilding(req) is null && GetUpgrade(req) is null)
+                    errors.Add($"unit '{u.Id}' requires unknown building/upgrade '{req}'");
         }
 
         foreach (var b in BuildingList)
             foreach (var req in b.Requires)
-                if (GetBuilding(req) is null)
-                    errors.Add($"building '{b.Id}' requires unknown building '{req}'");
+                if (GetBuilding(req) is null && GetUpgrade(req) is null)
+                    errors.Add($"building '{b.Id}' requires unknown building/upgrade '{req}'");
 
         foreach (var up in UpgradeList)
         {
