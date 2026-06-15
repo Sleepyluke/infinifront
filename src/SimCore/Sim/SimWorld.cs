@@ -8,7 +8,14 @@ public sealed partial class SimWorld
     public MapGrid Map { get; }
     public int Tick { get; private set; }
     public DeterministicRandom Rng { get; }
-    public FactionDef? Faction { get; }
+    private readonly FactionDef?[] _factions;
+
+    /// <summary>The faction for a given player (null if that slot has none).</summary>
+    public FactionDef? FactionFor(int playerId) => _factions[playerId];
+
+    /// <summary>Player 0's faction. Back-compat alias for callers (e.g. the Godot HUD building
+    /// the human's catalog menus) that predate per-player factions; the human is player 0.</summary>
+    public FactionDef? Faction => _factions.Length > 0 ? _factions[0] : null;
 
     private readonly List<Unit> _units = new(); // stable order — required for determinism
     private readonly Dictionary<int, Unit> _byId = new();
@@ -24,9 +31,20 @@ public sealed partial class SimWorld
     {
         Map = map;
         Rng = new DeterministicRandom(seed);
-        Faction = faction;
+        _players = new PlayerState[playerCount];
+        _factions = new FactionDef?[playerCount];
+        for (int i = 0; i < playerCount; i++) { _players[i] = new PlayerState(); _factions[i] = faction; }
+    }
+
+    /// <summary>Per-player factions; playerCount = factions.Length. The array is copied.</summary>
+    public SimWorld(MapGrid map, ulong seed, FactionDef?[] factions)
+    {
+        Map = map;
+        Rng = new DeterministicRandom(seed);
+        int playerCount = factions.Length;
         _players = new PlayerState[playerCount];
         for (int i = 0; i < playerCount; i++) _players[i] = new PlayerState();
+        _factions = (FactionDef?[])factions.Clone();
     }
 
     public IReadOnlyList<Unit> Units => _units;
@@ -169,7 +187,7 @@ public sealed partial class SimWorld
                 }
                 break;
             case BuildCommand bc:
-                var bdef = Faction?.GetBuilding(bc.BuildingDefId);
+                var bdef = FactionFor(bc.PlayerId)?.GetBuilding(bc.BuildingDefId);
                 if (bdef is null) break; // unknown def id (or no faction) — reject
                 var builder = GetUnit(bc.WorkerUnitId);
                 if (builder is null || builder.OwnerId != bc.PlayerId) break;
@@ -182,7 +200,7 @@ public sealed partial class SimWorld
                 PlaceBuilding(bc.PlayerId, bdef.Spec, bc.CellX, bc.CellY, bc.BuildingDefId);
                 break;
             case TrainCommand tc:
-                var udef = Faction?.GetUnit(tc.UnitDefId);
+                var udef = FactionFor(tc.PlayerId)?.GetUnit(tc.UnitDefId);
                 if (udef is null) break; // unknown unit def — reject
                 var trainer = GetBuilding(tc.BuildingId);
                 if (trainer is null || trainer.OwnerId != tc.PlayerId || !trainer.IsComplete || !trainer.Spec.CanTrain) break;
@@ -288,7 +306,7 @@ public sealed partial class SimWorld
                 }
                 break;
             case ResearchCommand rc:
-                var rup = Faction?.GetUpgrade(rc.UpgradeDefId);
+                var rup = FactionFor(rc.PlayerId)?.GetUpgrade(rc.UpgradeDefId);
                 if (rup is null) break;
                 var rb = GetBuilding(rc.BuildingId);
                 if (rb is null || rb.OwnerId != rc.PlayerId || !rb.IsComplete) break;
