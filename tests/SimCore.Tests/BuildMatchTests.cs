@@ -44,4 +44,15 @@ public class BuildMatchTests
         Assert.Equal(viaVersus.Units.Count, viaMatch.Units.Count);
         Assert.Equal(viaVersus.Players.Count, viaMatch.Players.Count);
     }
+
+    [Theory]
+    [InlineData(1)]   // too few
+    [InlineData(5)]   // more than 4 corners
+    public void Rejects_Out_Of_Range_Slot_Counts(int n)
+    {
+        var slots = new List<MatchSlot>();
+        for (int i = 0; i < n; i++)
+            slots.Add(new MatchSlot(ReferenceFaction.Def, PlayerController.Cpu, AiDifficulty.Easy, Team: i % 2));
+        Assert.Throws<System.ArgumentException>(() => MatchSetup.BuildMatch(slots, seed: 1));
+    }
 }
