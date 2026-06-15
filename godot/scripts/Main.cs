@@ -115,7 +115,7 @@ public partial class Main : Node2D
         var matchSlots = new System.Collections.Generic.List<MatchSlot>(slots.Count);
         var humanIds = new System.Collections.Generic.List<int>();
         long myPeer = net.Multiplayer.GetUniqueId();
-        int localSlot = 0;
+        int localSlot = -1;
         for (int i = 0; i < slots.Count; i++)
         {
             var s = slots[i];
@@ -124,6 +124,16 @@ public partial class Main : Node2D
             matchSlots.Add(new MatchSlot(faction, controller, s.Difficulty, s.Team));
             if (s.Kind == SlotKind.Human) humanIds.Add(i);
             if (s.Kind == SlotKind.Human && s.OccupantPeerId == myPeer) localSlot = i;
+        }
+
+        // No Human slot is occupied by THIS peer (e.g. the host re-flipped/removed our seat before
+        // Start, or our claim hadn't landed). Entering with a fallback slot would silently drive
+        // another player's units with NO desync to flag it — so halt loudly instead of guessing.
+        if (localSlot < 0)
+        {
+            GD.PrintErr($"Lobby start aborted: peer {myPeer} owns no Human slot in the start config.");
+            Runner.Paused = true;
+            return;
         }
 
         var world = MatchSetup.BuildMatch(matchSlots, seed);
