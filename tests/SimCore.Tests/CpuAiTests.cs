@@ -248,4 +248,22 @@ public class CpuAiTests
                 committed = true;
         Assert.True(committed, "expected Hard CPU to commit (march toward the enemy base at x=3) when ahead");
     }
+
+    [Fact]
+    public void Medium_Vs_Medium_Is_Deterministic_Across_Runs()
+    {
+        static SimWorld Build() { var w = OneCpuWorld(AiDifficulty.Medium); w.AddCompletedBuilding(0, ReferenceSpecs.Barracks, 6, 3, "barracks"); w.Players[0].Minerals = 2000; w.SpawnUnit(0, w.Map.CellCenter(5, 6), ReferenceSpecs.Fabber, "fabber"); w.AddResourceNode(8, 8, 100000); w.SetCpu(0, AiDifficulty.Medium); return w; }
+        var a = Build();
+        var b = Build();
+        for (int t = 0; t < 400; t++) { a.Step(Empty); b.Step(Empty); Assert.Equal(StateHasher.Hash(a), StateHasher.Hash(b)); }
+    }
+
+    [Fact]
+    public void Hard_Vs_Hard_Is_Deterministic_Across_Runs()
+    {
+        static SimWorld Build() { var w = OneCpuWorld(AiDifficulty.Hard); w.AddCompletedBuilding(0, ReferenceSpecs.Barracks, 6, 3, "barracks"); w.Players[0].Minerals = 2000; w.SpawnUnit(0, w.Map.CellCenter(5, 6), ReferenceSpecs.Fabber, "fabber"); w.AddResourceNode(8, 8, 100000); w.SetCpu(0, AiDifficulty.Hard); return w; }
+        var a = Build();
+        var b = Build();
+        for (int t = 0; t < 400; t++) { a.Step(Empty); b.Step(Empty); Assert.Equal(StateHasher.Hash(a), StateHasher.Hash(b)); }
+    }
 }

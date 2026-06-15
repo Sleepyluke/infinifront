@@ -502,3 +502,20 @@ Co-Authored-By: RuFlo <ruv@ruv.net>"
 - **Spec coverage:** refactor into shared helpers (Task 1); `RebuildProduction` + Medium (bigger eco via MediumWorkerCap, rebuild, earlier/sustained attack via lower threshold/interval) (Task 2); Hard reactive (`ThreatenedBuildingCenter` defend, `EnemyCombatCount` commit-when-ahead-and-past-min, rebuild) (Task 3); per-tier determinism + gate + 5e inputs (Task 4). Dispatch updated each task. All tiers stateless → no hashed state, golden unchanged. Every spec "In scope" item maps to a task.
 - **Placeholder scan:** none — complete code in every step.
 - **Type consistency:** `MacroEconomy(p,workerCap,supplyBuffer)`/`TrainCheapestCombat(p)`/`MaybeAttack(p,threshold,interval)`/`RebuildProduction(p)`/`MediumDecide`/`HardDecide`/`ReactiveAttack`/`ThreatenedBuildingCenter`/`EnemyCombatCount` consistent across tasks; consts named per tier; `EasyDecide` rewrite preserves the 5c step order/params; `AttackMoveDest`/`IsAttackMoving` used in tests match `Unit` fields; `ReferenceSpecs.Trooper` (has Weapon) used for spawned armies; the refactor is behavior-preserving (guarded by 5c tests).
+
+---
+
+## Plan-5e Inputs (carry-forward)
+
+5d completed the difficulty ladder (Easy/Medium/Hard, all fair + deterministic). 5e is the
+Godot match-flow capstone:
+- **Start menu:** title screen -> "Play vs CPU" -> choose difficulty (Easy/Medium/Hard), choose
+  your faction (scan `packs/` via `FactionPackLoader` + the in-code reference), optional map;
+  then start the match.
+- **Wire-up:** construct `SimWorld` with the per-player factions (5b `FactionDef?[]` ctor) and
+  call `SetCpu(1, difficulty)` (5c) for the AI player; player 0 = human.
+- **Victory/Defeat screen:** poll `world.Phase`/`WinnerId` (5a) each tick; on `Over`, freeze
+  input and show Victory (WinnerId == human) / Defeat / Draw with a Restart button.
+- **TestMap:** today it boots a 1v1 sandbox with player 1 idle -- wire `SetCpu` into it (or the
+  new match-setup path) so manual play has a real opponent.
+- All AI/match logic is SimCore; 5e is Godot-only (RenderMath floats OK; no determinism impact).
