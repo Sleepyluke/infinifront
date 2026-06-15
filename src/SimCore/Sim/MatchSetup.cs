@@ -12,17 +12,30 @@ public static class MatchSetup
     public static SimWorld BuildStandard1v1(FactionDef humanFaction, FactionDef cpuFaction,
                                             AiDifficulty difficulty, ulong seed)
     {
+        var w = new SimWorld(BuildMap(), seed, new FactionDef?[] { humanFaction, cpuFaction });
+        w.SetCpu(1, difficulty);
+        PlaceBase(w, 0, humanFaction, depotX: 4, depotY: 4, raxX: 8, raxY: 4, nodeX: 2, nodeY: 8, workerX: 6, workerY: 8);
+        PlaceBase(w, 1, cpuFaction, depotX: 34, depotY: 34, raxX: 30, raxY: 34, nodeX: 37, nodeY: 28, workerX: 33, workerY: 28);
+        return w;
+    }
+
+    /// <summary>Networked 1v1: BOTH players are human (no CPU). Same map + base placement as the
+    /// standard 1v1, minus SetCpu. Deterministic from the seed; identical on every peer.</summary>
+    public static SimWorld BuildVersus1v1(FactionDef p0Faction, FactionDef p1Faction, ulong seed)
+    {
+        var w = new SimWorld(BuildMap(), seed, new FactionDef?[] { p0Faction, p1Faction });
+        PlaceBase(w, 0, p0Faction, depotX: 4, depotY: 4, raxX: 8, raxY: 4, nodeX: 2, nodeY: 8, workerX: 6, workerY: 8);
+        PlaceBase(w, 1, p1Faction, depotX: 34, depotY: 34, raxX: 30, raxY: 34, nodeX: 37, nodeY: 28, workerX: 33, workerY: 28);
+        return w;
+    }
+
+    private static MapGrid BuildMap()
+    {
         var map = new MapGrid(MapSize, MapSize);
         // Rock ridge at x=20 with gaps at y=8..11 and y=28..31 (matches the legacy sandbox).
         for (int y = 0; y < MapSize; y++)
             if (y < 8 || (y > 11 && y < 28) || y > 31) map.SetPassable(20, y, false);
-
-        var w = new SimWorld(map, seed, new FactionDef?[] { humanFaction, cpuFaction });
-        w.SetCpu(1, difficulty);
-
-        PlaceBase(w, 0, humanFaction, depotX: 4, depotY: 4, raxX: 8, raxY: 4, nodeX: 2, nodeY: 8, workerX: 6, workerY: 8);
-        PlaceBase(w, 1, cpuFaction, depotX: 34, depotY: 34, raxX: 30, raxY: 34, nodeX: 37, nodeY: 28, workerX: 33, workerY: 28);
-        return w;
+        return map;
     }
 
     private static void PlaceBase(SimWorld w, int player, FactionDef faction,
