@@ -10,6 +10,14 @@ namespace SimCore.Packs;
 /// Validate() errors, so a fix-it loop (3d-2) can surface them.</summary>
 public sealed record PackLoadResult(FactionDef? Faction, IReadOnlyList<string> Errors);
 
+/// <summary>Load + full author-facing validation in one call. LoadErrors are the
+/// structural/parse errors from LoadFromJson; Findings are the PackValidator report
+/// (empty when the load hard-failed, i.e. Faction is null).</summary>
+public sealed record PackReport(
+    FactionDef? Faction,
+    IReadOnlyList<string> LoadErrors,
+    IReadOnlyList<ValidationFinding> Findings);
+
 /// <summary>Loads/saves faction packs as JSON. The only entry points the engine/UI should use.</summary>
 public static class FactionPackLoader
 {
@@ -58,4 +66,13 @@ public static class FactionPackLoader
 
     public static string ToJson(FactionDef faction) =>
         JsonSerializer.Serialize(PackMapper.ToDto(faction), PackJson.Options);
+
+    public static PackReport LoadAndValidate(string json, BudgetWeights? weights = null)
+    {
+        var result = LoadFromJson(json);
+        var findings = result.Faction is null
+            ? (IReadOnlyList<ValidationFinding>)System.Array.Empty<ValidationFinding>()
+            : PackValidator.Validate(result.Faction, weights);
+        return new PackReport(result.Faction, result.Errors, findings);
+    }
 }
