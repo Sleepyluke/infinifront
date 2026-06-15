@@ -1,5 +1,8 @@
 namespace SimCore.Sim;
 
+public enum PlayerController { Human, Cpu }
+public enum AiDifficulty { Easy, Medium, Hard }
+
 /// <summary>Per-player economy + tech state. AppliedUpgrades is kept SORTED so the hash
 /// is independent of research-completion order. (Hashed in StateHasher v4 — Task 7.)</summary>
 public sealed class PlayerState
@@ -7,6 +10,8 @@ public sealed class PlayerState
     public int Minerals { get; set; }
     public int SupplyUsed { get; set; }
     public int SupplyCap { get; set; }
+    public PlayerController Controller { get; set; } = PlayerController.Human;
+    public AiDifficulty Difficulty { get; set; } = AiDifficulty.Easy; // only meaningful when Controller == Cpu
 
     private readonly System.Collections.Generic.List<string> _appliedUpgrades = new();
     public System.Collections.Generic.IReadOnlyList<string> AppliedUpgrades => _appliedUpgrades;

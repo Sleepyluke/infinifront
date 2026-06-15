@@ -28,7 +28,9 @@ public class DeterminismTests
     ///   t=300 ResearchCommand on rax → "dmg1" (+3 damage, target *) — applies ~t=320,
     ///         retroactively boosting all player-0 units inside the golden trajectory.
     ///   Plan-5a: match state is now hashed; this scenario's player 1 is unit-only, so the
-    ///   match latches Over/WinnerId=0 at tick 0 (deterministic; sim does not halt).</summary>
+    ///   match latches Over/WinnerId=0 at tick 0 (deterministic; sim does not halt).
+    ///   Plan-5c: PlayerState.Controller/Difficulty now hashed; this scenario is all-Human
+    ///   (no CPU), so both fold as constant 0 — additive re-pin only, no AI commands.</summary>
     private static (SimWorld world, Dictionary<int, List<Command>> script) Scenario()
     {
         var map = new MapGrid(40, 40);
@@ -235,6 +237,6 @@ public class DeterminismTests
         Assert.Equal(GoldenTrajectoryHash, combined);
     }
 
-    private const ulong GoldenTrajectoryHash = 9352778236967924871UL;
+    private const ulong GoldenTrajectoryHash = 1571756151672809223UL;
 
 }
