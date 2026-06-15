@@ -32,7 +32,7 @@ public static class ReferenceSpecs
     // --- buildings (2x2 footprints) --------------------------------------
     public static readonly BuildingSpec Depot = new(
         MaxHp: 400, Width: 2, Height: 2, MineralCost: 100, BuildTimeTicks: 150,
-        SupplyProvided: 8, IsDepot: true, SightRange: 9);
+        SupplyProvided: 8, IsDepot: true, CanTrain: true, SightRange: 9);
 
     public static readonly BuildingSpec Barracks = new(
         MaxHp: 350, Width: 2, Height: 2, MineralCost: 150, BuildTimeTicks: 200,

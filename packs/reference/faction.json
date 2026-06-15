@@ -84,6 +84,7 @@
       "buildTimeTicks": 150,
       "supplyProvided": 8,
       "isDepot": true,
+      "canTrain": true,
       "sightRange": 9
     },
     {
