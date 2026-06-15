@@ -241,7 +241,7 @@ public sealed partial class SimWorld
         Fix bestDist = default;
         foreach (var e in _units)
         {
-            if (e.OwnerId == u.OwnerId || e.Hp <= 0) continue;
+            if (SameTeam(e.OwnerId, u.OwnerId) || e.Hp <= 0) continue;
             var (ecx, ecy) = Map.WorldToCell(e.Position);
             if (!IsVisibleTo(u.OwnerId, ecx, ecy)) continue;
             var d = (e.Position - u.Position).LengthSquared();
@@ -251,7 +251,7 @@ public sealed partial class SimWorld
         if (best != 0) return best;
         foreach (var b in _buildings)
         {
-            if (b.OwnerId == u.OwnerId || b.Hp <= 0) continue;
+            if (SameTeam(b.OwnerId, u.OwnerId) || b.Hp <= 0) continue;
             var bc = Map.WorldToCell(CenterOf(b));
             if (!IsVisibleTo(u.OwnerId, bc.Item1, bc.Item2)) continue;
             var d = (CenterOf(b) - u.Position).LengthSquared();

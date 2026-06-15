@@ -10,11 +10,25 @@ public sealed partial class SimWorld
     private bool[][] _visible = System.Array.Empty<bool[]>();   // [player][cell]
     private bool[][] _explored = System.Array.Empty<bool[]>();
 
-    public bool IsVisibleTo(int player, int cx, int cy) =>
-        !FogEnabled || (InBounds(cx, cy) && _visible.Length > player && _visible[player][cy * Map.Width + cx]);
+    public bool IsVisibleTo(int player, int cx, int cy)
+    {
+        if (!FogEnabled) return true;
+        if (!InBounds(cx, cy)) return false;
+        int idx = cy * Map.Width + cx;
+        for (int p = 0; p < _visible.Length; p++)               // any same-team player seeing the cell
+            if (_players[p].Team == _players[player].Team && _visible[p][idx]) return true;
+        return false;
+    }
 
-    public bool IsExploredBy(int player, int cx, int cy) =>
-        !FogEnabled || (InBounds(cx, cy) && _explored.Length > player && _explored[player][cy * Map.Width + cx]);
+    public bool IsExploredBy(int player, int cx, int cy)
+    {
+        if (!FogEnabled) return true;
+        if (!InBounds(cx, cy)) return false;
+        int idx = cy * Map.Width + cx;
+        for (int p = 0; p < _explored.Length; p++)
+            if (_players[p].Team == _players[player].Team && _explored[p][idx]) return true;
+        return false;
+    }
 
     private bool InBounds(int cx, int cy) => cx >= 0 && cy >= 0 && cx < Map.Width && cy < Map.Height;
 

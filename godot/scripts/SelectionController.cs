@@ -26,7 +26,9 @@ public partial class SelectionController : Node2D
     {
         switch (e)
         {
-            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Tab }:
+            // Debug-only "switch sides" hotkey — disabled in networked play (it would let a peer
+            // re-tag its commands as another player's and puppet their units). Anti-cheat proper is M4.
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Tab } when !MatchConfig.IsNetworked:
                 ControlledPlayer = 1 - ControlledPlayer;
                 Clear();
                 PlayerSwitched?.Invoke();

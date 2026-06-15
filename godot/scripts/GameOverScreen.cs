@@ -44,8 +44,13 @@ public partial class GameOverScreen : CanvasLayer
         if (_shown || _runner.World.Phase != MatchPhase.Over) return;
         _shown = true;
         _runner.Paused = true;
+        // Team-aware outcome: the WinnerId is a representative of the winning team (-1 = draw).
+        // Victory iff the local (controlled) player is on the winning team.
         int winner = _runner.World.WinnerId;
-        _result.Text = winner == 0 ? "Victory!" : winner == 1 ? "Defeat" : "Draw";
+        int localPlayer = GetParent()?.GetNodeOrNull<SelectionController>("Selection")?.ControlledPlayer ?? 0;
+        _result.Text = winner < 0 ? "Draw"
+            : _runner.World.SameTeam(localPlayer, winner) ? "Victory!"
+            : "Defeat";
         _panel.Visible = true;
     }
 }

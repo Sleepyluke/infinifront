@@ -1,31 +1,42 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 using SimCore.Net;
 
 namespace LlmRts.Godot;
 
-/// <summary>ENet transport for deterministic lockstep. Host/Join, a start handshake (host assigns
-/// player ids + seed), and host-relayed frame/hash RPCs. Raises events for SimRunner to drive the
-/// LockstepCoordinator. M2 minimal: exactly 2 players (host=0, client=1).</summary>
+/// <summary>ENet transport for deterministic lockstep. Host/Join, a host-authoritative lobby
+/// protocol (sync slots / claim / faction / start-config broadcast), and host-relayed frame/hash
+/// RPCs. Raises events for LobbyScreen + SimRunner. M3: up to 4 players in 2 teams.</summary>
 public partial class NetSession : Node
 {
     public const int Port = 7777;
-    public const ulong MatchSeed = 42;   // M2: fixed; M3's lobby makes this host-chosen.
+    public const ulong MatchSeed = 42;   // M3: the host could later choose this; fixed for now.
     public const int InputDelay = 3;     // ~300 ms at 10 ticks/s.
 
     public bool IsHost { get; private set; }
-    public int LocalPlayerId { get; private set; }
+    /// <summary>The local player's slot index. Set by Main from the final slot list (the slot whose
+    /// OccupantPeerId == Multiplayer.GetUniqueId()) — no longer set in a handshake.</summary>
+    public int LocalPlayerId { get; set; }
 
-    /// <summary>Fired once the handshake completes: (localPlayerId, seed). Build the world + start.</summary>
-    public event Action<int, ulong>? MatchReady;
+    // ---- Lobby protocol (M3) ----
+    /// <summary>Host-authoritative current slot list changed (or first received). UI re-renders.</summary>
+    public event Action<IReadOnlyList<LobbySlot>>? LobbyUpdated;
+    /// <summary>The match is starting: final slots + seed. Build the world + enter the loop.</summary>
+    public event Action<IReadOnlyList<LobbySlot>, ulong>? MatchStarting;
+    /// <summary>(Host) Fired when a client requests its faction: (senderPeerId, factionId).</summary>
+    public event Action<long, string>? FactionRequested;
+    /// <summary>(Host) Fired when a client requests to claim a slot: (senderPeerId, slotIndex).</summary>
+    public event Action<long, int>? ClaimRequested;
+    /// <summary>(Host) A peer connected (assign it an open slot).</summary>
+    public event Action<long>? PeerConnectedToLobby;
+
     /// <summary>A remote human's command frame arrived → coordinator.Receive.</summary>
     public event Action<CommandFrame>? FrameReceived;
     /// <summary>A remote peer's per-tick state hash arrived → coordinator.ReceiveHash.</summary>
     public event Action<int, int, ulong>? HashReceived;
-    /// <summary>A peer dropped (M4 handles recovery; M2 just surfaces it).</summary>
+    /// <summary>A peer dropped (M4 handles recovery; M3 just surfaces it).</summary>
     public event Action? PeerDropped;
-
-    private bool _started;
 
     public void Host()
     {
@@ -53,31 +64,58 @@ public partial class NetSession : Node
         GD.Print($"NetSession joining {ip}:{Port}");
     }
 
-    // ---- Handshake (host) ----
+    // ---- Lobby (host-authoritative) ----
+    // Replaces M2's OnPeerConnected auto-start. The HOST owns the slot list and assigns joiners.
+    // Host code calls SetLobby(slots) to push state; clients receive it via SyncLobbyRpc.
     private void OnPeerConnected(long peerId)
     {
-        if (!IsHost || _started) return;       // M2: start on the first client.
-        _started = true;
-        // M2 minimal: the one client is player 1.
-        RpcId(peerId, MethodName.StartMatchRpc, unchecked((long)MatchSeed), 1);
-        // Host is player 0 — fire locally (RPCs are CallLocal=false).
-        MatchReady?.Invoke(0, MatchSeed);
+        if (IsHost) PeerConnectedToLobby?.Invoke(peerId);
     }
 
     private void OnPeerDisconnected(long peerId) => PeerDropped?.Invoke();
     private void OnServerDisconnected() => PeerDropped?.Invoke();
 
+    /// <summary>(Host) Broadcast the authoritative slot list to all clients and raise locally.</summary>
+    public void SetLobby(IReadOnlyList<LobbySlot> slots)
+    {
+        if (!IsHost) return;
+        var bytes = LobbyCodec.SlotsToBytes(slots);
+        Rpc(MethodName.SyncLobbyRpc, bytes);
+        LobbyUpdated?.Invoke(slots);
+    }
+
+    /// <summary>(Host) Broadcast the final config + seed; everyone (host local too) starts.</summary>
+    public void StartMatch(IReadOnlyList<LobbySlot> slots, ulong seed)
+    {
+        if (!IsHost) return;
+        var bytes = LobbyCodec.SlotsToBytes(slots);
+        Rpc(MethodName.StartConfigRpc, bytes, unchecked((long)seed));
+        MatchStarting?.Invoke(slots, seed);     // host starts locally (RPCs are CallLocal=false)
+    }
+
+    /// <summary>(Client) Ask the host to set MY slot's faction.</summary>
+    public void RequestMyFaction(string factionId) => RpcId(1, MethodName.SetFactionRpc, factionId);
+    /// <summary>(Client) Ask the host to claim an Open slot for me.</summary>
+    public void RequestClaim(int slotIndex) => RpcId(1, MethodName.ClaimSlotRpc, slotIndex);
+
     // CORRECTNESS INVARIANT — all RPCs below intentionally share the default reliable channel (0).
-    // The host emits StartMatchRpc (which makes the client subscribe to frames in InitNetworked)
+    // The host emits StartConfigRpc (which makes the client subscribe to frames in InitNetworked)
     // BEFORE the primed frame RPCs; same-channel reliable delivery is ordered, so the client always
     // subscribes before any frame arrives. Do NOT add a per-method `channel:` to one of these without
-    // the others — splitting channels can reorder StartMatchRpc after the frames → permanent startup stall.
+    // the others — splitting channels can reorder StartConfigRpc after the frames → permanent startup stall.
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void StartMatchRpc(long seedBits, int assignedPlayerId)
-    {
-        LocalPlayerId = assignedPlayerId;
-        MatchReady?.Invoke(assignedPlayerId, unchecked((ulong)seedBits));
-    }
+    private void SyncLobbyRpc(byte[] bytes) => LobbyUpdated?.Invoke(LobbyCodec.SlotsFromBytes(bytes));
+
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+    private void StartConfigRpc(byte[] bytes, long seedBits) =>
+        MatchStarting?.Invoke(LobbyCodec.SlotsFromBytes(bytes), unchecked((ulong)seedBits));
+
+    // Host-side requests from clients. The host raises an event so LobbyScreen mutates + re-broadcasts.
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+    private void SetFactionRpc(string factionId) => FactionRequested?.Invoke(Multiplayer.GetRemoteSenderId(), factionId);
+
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+    private void ClaimSlotRpc(int slotIndex) => ClaimRequested?.Invoke(Multiplayer.GetRemoteSenderId(), slotIndex);
 
     // ---- Frames ----
     public void SendFrame(CommandFrame frame)

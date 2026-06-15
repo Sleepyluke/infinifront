@@ -1,5 +1,6 @@
 using Godot;
 using SimCore.Net;
+using SimCore.Packs;
 using SimCore.Sim;
 
 namespace LlmRts.Godot;
@@ -88,44 +89,75 @@ public partial class Main : Node2D
 
     private void StartNetworked()
     {
-        Runner.Paused = true;                     // hold until both peers are ready
-
-        var status = new CanvasLayer { Name = "NetStatus", Layer = 100 };
-        var statusLabel = new Label
-        {
-            Text = MatchConfig.IsHost ? "Hosting — waiting for opponent…" : $"Connecting to {MatchConfig.Ip}…",
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        statusLabel.SetAnchorsPreset(Control.LayoutPreset.Center);
-        status.AddChild(statusLabel);
-        AddChild(status);
+        Runner.Paused = true;
+        var factions = PackCatalog.Load(PacksDir());
 
         var net = new NetSession { Name = "Net" };
         AddChild(net);
 
-        net.MatchReady += (localPlayerId, seed) =>
-        {
-            var coord = new SimCore.Net.LockstepCoordinator(localPlayerId, new[] { 0, 1 }, NetSession.InputDelay);
-            Runner.InitNetworked(Runner.World, coord, net, localPlayerId);
-            Selection.ControlledPlayer = localPlayerId;   // command only your own slot
-            statusLabel.Text = $"Connected — you are player {localPlayerId}";
-            status.Visible = false;
-            Runner.Paused = false;
+        var lobby = new LobbyScreen { Name = "Lobby" };
+        lobby.Init(net, MatchConfig.IsHost, factions);
+        AddChild(lobby);
 
-            var gameOver = new GameOverScreen { Name = "GameOver" };
-            AddChild(gameOver);
-            gameOver.Init(Runner);
-        };
-
-        net.PeerDropped += () =>
+        net.MatchStarting += (slots, seed) =>
         {
-            Runner.Paused = true;
-            status.Visible = true;
-            statusLabel.Text = "Opponent disconnected — match halted.";
+            lobby.QueueFree();
+            BuildNetworkedMatch(net, slots, seed, factions);
         };
+        net.PeerDropped += () => { Runner.Paused = true; GD.Print("Peer dropped"); };
 
         if (MatchConfig.IsHost) net.Host(); else net.Join(MatchConfig.Ip);
     }
+
+    private void BuildNetworkedMatch(NetSession net, System.Collections.Generic.IReadOnlyList<LobbySlot> slots, ulong seed, System.Collections.Generic.IReadOnlyList<FactionEntry> factions)
+    {
+        // Resolve each slot's faction id -> FactionDef (fallback to reference) and map to MatchSlot.
+        var matchSlots = new System.Collections.Generic.List<MatchSlot>(slots.Count);
+        var humanIds = new System.Collections.Generic.List<int>();
+        long myPeer = net.Multiplayer.GetUniqueId();
+        int localSlot = -1;
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var s = slots[i];
+            var faction = ResolveFaction(factions, s.FactionId);
+            var controller = s.Kind == SlotKind.Cpu ? PlayerController.Cpu : PlayerController.Human;
+            matchSlots.Add(new MatchSlot(faction, controller, s.Difficulty, s.Team));
+            if (s.Kind == SlotKind.Human) humanIds.Add(i);
+            if (s.Kind == SlotKind.Human && s.OccupantPeerId == myPeer) localSlot = i;
+        }
+
+        // No Human slot is occupied by THIS peer (e.g. the host re-flipped/removed our seat before
+        // Start, or our claim hadn't landed). Entering with a fallback slot would silently drive
+        // another player's units with NO desync to flag it — so halt loudly instead of guessing.
+        if (localSlot < 0)
+        {
+            GD.PrintErr($"Lobby start aborted: peer {myPeer} owns no Human slot in the start config.");
+            Runner.Paused = true;
+            return;
+        }
+
+        var world = MatchSetup.BuildMatch(matchSlots, seed);
+        Runner.Init(world);
+        View.ForceSync();                                   // re-sync views to the new world (map unchanged)
+        Selection.ControlledPlayer = localSlot;
+
+        var coord = new SimCore.Net.LockstepCoordinator(localSlot, humanIds, NetSession.InputDelay);
+        Runner.InitNetworked(world, coord, net, localSlot);
+        Runner.Paused = false;
+
+        var gameOver = new GameOverScreen { Name = "GameOver" };
+        AddChild(gameOver);
+        gameOver.Init(Runner);
+    }
+
+    private static FactionDef ResolveFaction(System.Collections.Generic.IReadOnlyList<FactionEntry> factions, string id)
+    {
+        foreach (var f in factions) if (f.Faction.Id == id) return f.Faction;
+        return ReferenceFaction.Def;
+    }
+
+    private static string PacksDir() =>
+        System.IO.Path.Combine(System.AppContext.BaseDirectory, "packs");
 
     public override void _UnhandledKeyInput(InputEvent e)
     {
