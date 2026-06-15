@@ -2,6 +2,10 @@ using SimCore.Math;
 
 namespace SimCore.Sim;
 
+/// <summary>One player slot for <see cref="MatchSetup.BuildMatch"/>: a faction, a controller
+/// (Human/Cpu), a difficulty (only meaningful for Cpu), and a team id.</summary>
+public sealed record MatchSlot(FactionDef Faction, PlayerController Controller, AiDifficulty Difficulty, int Team);
+
 /// <summary>Builds a standard 1v1 match world (player 0 = human, player 1 = CPU) from two
 /// factions + a difficulty. Starting bases are role-resolved from each player's OWN faction, so
 /// it works for any pack. Deterministic; SimCore-only (no Godot).</summary>
@@ -9,25 +13,53 @@ public static class MatchSetup
 {
     public const int MapSize = 40;
 
-    public static SimWorld BuildStandard1v1(FactionDef humanFaction, FactionDef cpuFaction,
-                                            AiDifficulty difficulty, ulong seed)
+    private readonly record struct Corner(int DepotX, int DepotY, int RaxX, int RaxY, int NodeX, int NodeY, int WorkerX, int WorkerY);
+
+    // Up to 4 start corners on the 40x40 map. 0/1 match the legacy 1v1 placements exactly.
+    private static readonly Corner[] Corners =
     {
-        var w = new SimWorld(BuildMap(), seed, new FactionDef?[] { humanFaction, cpuFaction });
-        w.SetCpu(1, difficulty);
-        PlaceBase(w, 0, humanFaction, depotX: 4, depotY: 4, raxX: 8, raxY: 4, nodeX: 2, nodeY: 8, workerX: 6, workerY: 8);
-        PlaceBase(w, 1, cpuFaction, depotX: 34, depotY: 34, raxX: 30, raxY: 34, nodeX: 37, nodeY: 28, workerX: 33, workerY: 28);
+        new(4, 4, 8, 4, 2, 8, 6, 8),        // top-left
+        new(34, 34, 30, 34, 37, 28, 33, 28),// bottom-right
+        new(4, 34, 8, 34, 2, 28, 6, 28),    // bottom-left
+        new(34, 4, 30, 4, 37, 8, 33, 8),    // top-right
+    };
+
+    /// <summary>Build a 2–4 player match from slots. One role-resolved base per corner; CPU + team
+    /// set per slot. Deterministic from the seed; identical on every peer (the lockstep contract).</summary>
+    public static SimWorld BuildMatch(System.Collections.Generic.IReadOnlyList<MatchSlot> slots, ulong seed)
+    {
+        if (slots.Count < 2 || slots.Count > Corners.Length)
+            throw new System.ArgumentException($"BuildMatch supports 2..{Corners.Length} slots", nameof(slots));
+        var factions = new FactionDef?[slots.Count];
+        for (int i = 0; i < slots.Count; i++) factions[i] = slots[i].Faction;
+        var w = new SimWorld(BuildMap(), seed, factions);
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var s = slots[i];
+            if (s.Controller == PlayerController.Cpu) w.SetCpu(i, s.Difficulty);
+            w.SetTeam(i, s.Team);
+            var c = Corners[i];
+            PlaceBase(w, i, s.Faction, c.DepotX, c.DepotY, c.RaxX, c.RaxY, c.NodeX, c.NodeY, c.WorkerX, c.WorkerY);
+        }
         return w;
     }
 
+    public static SimWorld BuildStandard1v1(FactionDef humanFaction, FactionDef cpuFaction,
+                                            AiDifficulty difficulty, ulong seed) =>
+        BuildMatch(new[]
+        {
+            new MatchSlot(humanFaction, PlayerController.Human, AiDifficulty.Easy, Team: 0),
+            new MatchSlot(cpuFaction, PlayerController.Cpu, difficulty, Team: 1),
+        }, seed);
+
     /// <summary>Networked 1v1: BOTH players are human (no CPU). Same map + base placement as the
     /// standard 1v1, minus SetCpu. Deterministic from the seed; identical on every peer.</summary>
-    public static SimWorld BuildVersus1v1(FactionDef p0Faction, FactionDef p1Faction, ulong seed)
-    {
-        var w = new SimWorld(BuildMap(), seed, new FactionDef?[] { p0Faction, p1Faction });
-        PlaceBase(w, 0, p0Faction, depotX: 4, depotY: 4, raxX: 8, raxY: 4, nodeX: 2, nodeY: 8, workerX: 6, workerY: 8);
-        PlaceBase(w, 1, p1Faction, depotX: 34, depotY: 34, raxX: 30, raxY: 34, nodeX: 37, nodeY: 28, workerX: 33, workerY: 28);
-        return w;
-    }
+    public static SimWorld BuildVersus1v1(FactionDef p0Faction, FactionDef p1Faction, ulong seed) =>
+        BuildMatch(new[]
+        {
+            new MatchSlot(p0Faction, PlayerController.Human, AiDifficulty.Easy, Team: 0),
+            new MatchSlot(p1Faction, PlayerController.Human, AiDifficulty.Easy, Team: 1),
+        }, seed);
 
     private static MapGrid BuildMap()
     {
