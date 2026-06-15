@@ -440,3 +440,48 @@ Co-Authored-By: RuFlo <ruv@ruv.net>"
 - **Spec coverage (M1 section):** `CommandFrame` (empty-frame semantics) + `LockstepCoordinator` with `SubmitLocal`/`Receive`/`TryDequeueStep` (input-delay scheduling, all-humans gating with the initial pad, ascending-PlayerId deterministic merge, stall) in Task 1; `RecordLocalHash`/`ReceiveHash`/`Desynced`/`DesyncTick` in Task 2; world-free + Godot-free `SimCore.Net` library; multi-peer headless tests proving identical stepping + desync detection; golden untouched (Task 3). Every M1 "in scope" item maps to a task.
 - **Placeholder scan:** none — complete code in every step.
 - **Type consistency:** `CommandFrame(int Tick, int PlayerId, IReadOnlyList<Command> Commands)`, `LockstepCoordinator(int localPlayerId, IReadOnlyList<int> humanPlayerIds, int inputDelay)`, `SubmitLocal`/`Receive`/`TryDequeueStep(out IReadOnlyList<Command>)`/`RecordLocalHash`/`ReceiveHash`/`Desynced`/`DesyncTick`/`NextStepTick` used identically across tasks; `Command`/`MoveCommand` shapes match `Commands.cs`; the `Describe` helper sidesteps int[]-by-reference record equality in the merge tests.
+
+---
+
+## Execution Outcome (M1, completed 2026-06-15)
+
+All 3 tasks implemented via subagent-driven development (foreground implementers + two-stage
+review). Final state on branch `feat/lockstep-coordinator`: new `SimCore.Net` library +
+`CommandFrame` + `LockstepCoordinator` (frame buffering, input-delay scheduling, deterministic
+ascending-PlayerId merge, all-humans stall gating, per-tick desync detection). **328 SimCore +
+6 SpriteSlicer tests, Debug == Release, `SimCore` byte-untouched → golden trajectory hash
+unchanged at `1571756151672809223UL`.** The multi-peer headless test
+(`Two_Peers_Step_Identically_Over_Many_Ticks`) proves two in-process peers step on an identical
+merged command stream — lockstep's heart, verified without a network.
+
+Review-driven hardening landed in M1: `Receive` drops frames for already-stepped ticks (packet
+reorder/dup hygiene) and the ctor rejects a `localPlayerId` not among the human players (silent
+input-drop footgun → throws).
+
+## Plan-M2 Inputs (carry-forward)
+
+M2 = ENet transport + game-loop integration (playtested; serialization is headless-testable):
+- **Command serialization:** a compact binary writer/reader for every concrete `Command` (ints,
+  `int[]`, `FixVec` = two `long` raws, strings, enums) so a `CommandFrame` crosses an RPC.
+  Round-trip headless-tested (TDD); the socket layer is playtested.
+- **Transport:** Godot `ENetMultiplayerPeer` host/client; host forwards every human's frame so
+  all peers see all frames; RPCs `SendFrame(tick, playerId, bytes)` + `SendHash(tick, playerId, hash)`.
+- **Loop:** drive `LockstepCoordinator` from `SimRunner` — each tick `SubmitLocal(localQueue)` +
+  broadcast the frame; `while (TryDequeueStep(out var cmds)) { World.Step(cmds); var h =
+  StateHasher.Hash(World); coordinator.RecordLocalHash(tick, h); broadcast hash; }`. Single-player
+  routes through a 1-human, inputDelay-0 coordinator (≈ today's immediate apply) — verify the
+  golden/sandbox are unaffected.
+- **Determinism contract:** the merge order (ascending `PlayerId`) is what M2 relies on — never
+  reorder. CPU slots are NOT in the frame exchange — `UpdateAi` runs in `Step` on every peer.
+  Input delay 2–3 ticks (~200–300 ms at 10 ticks/s) is the starting default; expose for tuning.
+
+## Plan-M3/M4 Inputs (carry-forward)
+
+- **M3 (lobby):** slot config (local-human / open-remote / CPU+difficulty) + per-slot faction
+  (`PackCatalog`); host "Start" broadcasts the agreed config (slots/factions/difficulties/seed)
+  so every peer builds an identical world via a generalized `MatchSetup`. Extends the 5e menu.
+- **M4 (robustness):** desync-halt screen via `Desynced`/`DesyncTick`; disconnect handling
+  (pause/notify, default = dropped human concedes); input-delay tuning. **Also: bound the
+  coordinator's `_hashes` buffer** — unlike `_frames` (released on dispatch), recorded hashes
+  currently accumulate; evict compared/old-tick entries (sliding window) so a long match doesn't
+  grow memory. (Flagged in M1 Task 2 review; deferred here as M4 robustness, not an M1 defect.)
