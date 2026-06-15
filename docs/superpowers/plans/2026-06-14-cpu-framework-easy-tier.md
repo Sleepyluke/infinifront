@@ -222,9 +222,12 @@ Add to `CpuAiTests.cs` (inside the class):
 
 ```csharp
     // A CPU player (id 1) with a depot+barracks+fabber, a node, and minerals.
+    // Player 0 gets a lone depot too, so the match stays InProgress (otherwise it latches
+    // Over at tick 0 and UpdateAi's Phase==Over guard would stop the CPU after one tick).
     private static SimWorld EasyEcoWorld()
     {
         var w = new SimWorld(new MapGrid(40, 40), seed: 3, new FactionDef?[] { ReferenceFaction.Def, ReferenceFaction.Def });
+        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 3, 3, "depot"); // keep player 0 alive → match InProgress
         w.Players[1].Minerals = 1000;
         w.AddCompletedBuilding(1, ReferenceSpecs.Depot, 30, 30, "depot");
         w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 33, 30, "barracks");
