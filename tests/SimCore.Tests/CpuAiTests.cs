@@ -26,4 +26,60 @@ public class CpuAiTests
         for (int t = 0; t < 30; t++) w.Step(Empty); // no buildings/workers → AI finds no producer; no throw
         Assert.Empty(w.Units);
     }
+
+    // A CPU player (id 1) with a depot+barracks+fabber, a node, and minerals.
+    // Player 0 gets a lone depot too, so the match stays InProgress (otherwise it latches
+    // Over at tick 0 and UpdateAi's Phase==Over guard would stop the CPU after one tick).
+    private static SimWorld EasyEcoWorld()
+    {
+        var w = new SimWorld(new MapGrid(40, 40), seed: 3, new FactionDef?[] { ReferenceFaction.Def, ReferenceFaction.Def });
+        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 3, 3, "depot"); // keep player 0 alive → match InProgress
+        w.Players[1].Minerals = 1000;
+        w.AddCompletedBuilding(1, ReferenceSpecs.Depot, 30, 30, "depot");
+        w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 33, 30, "barracks");
+        w.SpawnUnit(1, w.Map.CellCenter(30, 28), ReferenceSpecs.Fabber, "fabber");
+        w.AddResourceNode(28, 28, 1000);
+        w.SetCpu(1, AiDifficulty.Easy);
+        return w;
+    }
+
+    private static int Workers(SimWorld w, int p)
+    {
+        int c = 0; foreach (var u in w.Units) if (u.OwnerId == p && u.Harvester is not null) c++; return c;
+    }
+
+    [Fact]
+    public void Easy_Trains_Workers_Up_To_Cap()
+    {
+        var w = EasyEcoWorld();
+        int start = Workers(w, 1);
+        for (int t = 0; t < 1200; t++) w.Step(Empty);
+        int now = Workers(w, 1);
+        Assert.True(now > start, $"expected CPU to train workers (start {start}, now {now})");
+        Assert.True(now <= 8, $"worker cap is 8, got {now}");
+    }
+
+    [Fact]
+    public void Easy_Harvests_So_Minerals_Are_Spent_And_Earned()
+    {
+        var w = EasyEcoWorld();
+        // Run long enough to see harvest income (workers deliver minerals back).
+        for (int t = 0; t < 600; t++) w.Step(Empty);
+        // At least one worker is in a harvest phase (assigned to the node).
+        bool anyHarvesting = false;
+        foreach (var u in w.Units)
+            if (u.OwnerId == 1 && u.Harvester is not null && u.HarvestPhase != HarvestPhase.None) anyHarvesting = true;
+        Assert.True(anyHarvesting, "expected CPU workers to be harvesting");
+    }
+
+    [Fact]
+    public void Easy_Builds_Supply_When_Blocked()
+    {
+        var w = EasyEcoWorld();
+        // Depot gives 8 supply; workers cost 1 each. Drive toward the cap so the AI builds supply.
+        for (int t = 0; t < 2000; t++) w.Step(Empty);
+        int depots = 0;
+        foreach (var b in w.Buildings) if (b.OwnerId == 1 && b.Spec.SupplyProvided > 0) depots++;
+        Assert.True(depots >= 2, $"expected CPU to build at least one extra supply building, total {depots}");
+    }
 }
