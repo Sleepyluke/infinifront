@@ -48,6 +48,44 @@ public class CpuAiTests
         int c = 0; foreach (var u in w.Units) if (u.OwnerId == p && u.Harvester is not null) c++; return c;
     }
 
+    // A CPU player (id 1) at the given difficulty with a full base + big node; player 0 has a lone
+    // depot so the match stays InProgress.
+    private static SimWorld OneCpuWorld(AiDifficulty diff)
+    {
+        var w = new SimWorld(new MapGrid(40, 40), seed: 9, new FactionDef?[] { ReferenceFaction.Def, ReferenceFaction.Def });
+        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 3, 3, "depot");
+        w.Players[1].Minerals = 2000;
+        w.AddCompletedBuilding(1, ReferenceSpecs.Depot, 30, 30, "depot");
+        w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 33, 30, "barracks");
+        w.SpawnUnit(1, w.Map.CellCenter(30, 28), ReferenceSpecs.Fabber, "fabber");
+        w.AddResourceNode(28, 28, 100000);
+        w.SetCpu(1, diff);
+        return w;
+    }
+
+    [Fact]
+    public void Medium_Trains_More_Workers_Than_Easy_Cap()
+    {
+        var w = OneCpuWorld(AiDifficulty.Medium);
+        for (int t = 0; t < 3000; t++) w.Step(Empty);
+        int workers = Workers(w, 1);
+        Assert.True(workers > 8, $"Medium worker cap is 10 (> Easy's 8); got {workers}");
+        Assert.True(workers <= 10, $"Medium worker cap is 10; got {workers}");
+    }
+
+    [Fact]
+    public void Medium_Rebuilds_Lost_Production_Building()
+    {
+        var w = OneCpuWorld(AiDifficulty.Medium);
+        for (int t = 0; t < 300; t++) w.Step(Empty); // establish economy
+        // Destroy the CPU's only barracks (combat producer).
+        foreach (var b in w.Buildings) if (b.OwnerId == 1 && b.DefId == "barracks") { b.Hp = 0; break; }
+        w.Step(Empty); // RemoveDeadBuildings clears it
+        Assert.DoesNotContain(w.Buildings, b => b.OwnerId == 1 && b.DefId == "barracks");
+        for (int t = 0; t < 1000; t++) w.Step(Empty);
+        Assert.Contains(w.Buildings, b => b.OwnerId == 1 && b.DefId == "barracks"); // rebuilt
+    }
+
     [Fact]
     public void Easy_Trains_Workers_Up_To_Cap()
     {
@@ -153,5 +191,79 @@ public class CpuAiTests
         var w = CpuVsCpuWorld();
         for (int t = 0; t < 400; t++) w.Step(Empty);
         Assert.True(w.Units.Count > 2, $"expected CPUs to build up forces, got {w.Units.Count} units");
+    }
+
+    [Fact]
+    public void Hard_Defends_A_Threatened_Base()
+    {
+        var w = new SimWorld(new MapGrid(40, 40), seed: 11, new FactionDef?[] { ReferenceFaction.Def, ReferenceFaction.Def });
+        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 3, 3, "depot");        // far human base (commit target)
+        w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 30, 30, "barracks"); // CPU base to defend
+        for (int i = 0; i < 8; i++) w.SpawnUnit(1, w.Map.CellCenter(25 + i % 4, 35), ReferenceSpecs.Trooper, "trooper");
+        var enemy = w.SpawnUnit(0, w.Map.CellCenter(31, 31), ReferenceSpecs.Trooper, "trooper"); // next to CPU base
+        w.SetCpu(1, AiDifficulty.Hard);
+
+        for (int t = 0; t <= 10; t++) w.Step(Empty); // reach a decision tick (Tick % 10 == 0 at t=10)
+
+        bool defending = false;
+        foreach (var u in w.Units)
+            if (u.OwnerId == 1 && u.Weapon is not null && u.IsAttackMoving && u.AttackMoveDest.X > Fix.FromInt(20))
+                defending = true;
+        Assert.True(defending, "expected Hard CPU to recall its army to the threatened base (east), not attack west");
+    }
+
+    [Fact]
+    public void Hard_Holds_When_Outnumbered()
+    {
+        var w = new SimWorld(new MapGrid(40, 40), seed: 12, new FactionDef?[] { ReferenceFaction.Def, ReferenceFaction.Def });
+        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 3, 3, "depot");
+        w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 30, 30, "barracks");
+        for (int i = 0; i < 8; i++) w.SpawnUnit(1, w.Map.CellCenter(28, 30 + i % 6), ReferenceSpecs.Trooper, "trooper"); // CPU army 8
+        for (int i = 0; i < 20; i++) w.SpawnUnit(0, w.Map.CellCenter(3, 5 + i % 20), ReferenceSpecs.Trooper, "trooper"); // human army 20 (far)
+        w.SetCpu(1, AiDifficulty.Hard);
+
+        for (int t = 0; t <= 120; t++) w.Step(Empty); // reach an attack tick (120 % 120 == 0)
+
+        bool committed = false;
+        foreach (var u in w.Units)
+            if (u.OwnerId == 1 && u.Weapon is not null && u.IsAttackMoving && u.AttackMoveDest.X < Fix.FromInt(20))
+                committed = true;
+        Assert.False(committed, "expected Hard CPU to hold (not march west) while outnumbered and unthreatened");
+    }
+
+    [Fact]
+    public void Hard_Commits_When_Ahead()
+    {
+        var w = new SimWorld(new MapGrid(40, 40), seed: 13, new FactionDef?[] { ReferenceFaction.Def, ReferenceFaction.Def });
+        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 3, 3, "depot");
+        w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 30, 30, "barracks");
+        for (int i = 0; i < 10; i++) w.SpawnUnit(1, w.Map.CellCenter(28, 30 + i % 8), ReferenceSpecs.Trooper, "trooper");
+        w.SetCpu(1, AiDifficulty.Hard);
+
+        for (int t = 0; t <= 120; t++) w.Step(Empty);
+
+        bool committed = false;
+        foreach (var u in w.Units)
+            if (u.OwnerId == 1 && u.Weapon is not null && u.IsAttackMoving && u.AttackMoveDest.X < Fix.FromInt(20))
+                committed = true;
+        Assert.True(committed, "expected Hard CPU to commit (march toward the enemy base at x=3) when ahead");
+    }
+
+    [Fact]
+    public void Medium_Vs_Medium_Is_Deterministic_Across_Runs()
+    {
+        static SimWorld Build() { var w = OneCpuWorld(AiDifficulty.Medium); w.AddCompletedBuilding(0, ReferenceSpecs.Barracks, 6, 3, "barracks"); w.Players[0].Minerals = 2000; w.SpawnUnit(0, w.Map.CellCenter(5, 6), ReferenceSpecs.Fabber, "fabber"); w.AddResourceNode(8, 8, 100000); w.SetCpu(0, AiDifficulty.Medium); return w; }
+        var a = Build();
+        var b = Build();
+        for (int t = 0; t < 400; t++) { a.Step(Empty); b.Step(Empty); Assert.Equal(StateHasher.Hash(a), StateHasher.Hash(b)); }
+    }
+
+    [Fact]
+    public void Hard_Vs_Hard_Is_Deterministic_Across_Runs()
+    {
+        static SimWorld Build() { var w = OneCpuWorld(AiDifficulty.Hard); w.AddCompletedBuilding(0, ReferenceSpecs.Barracks, 6, 3, "barracks"); w.Players[0].Minerals = 2000; w.SpawnUnit(0, w.Map.CellCenter(5, 6), ReferenceSpecs.Fabber, "fabber"); w.AddResourceNode(8, 8, 100000); w.SetCpu(0, AiDifficulty.Hard); return w; }
+        var a = Build();
+        var b = Build();
+        for (int t = 0; t < 400; t++) { a.Step(Empty); b.Step(Empty); Assert.Equal(StateHasher.Hash(a), StateHasher.Hash(b)); }
     }
 }
