@@ -27,13 +27,19 @@ public sealed partial class SimWorld
     private readonly PlayerState[] _players;
     public System.Collections.Generic.IReadOnlyList<PlayerState> Players => _players;
 
+    /// <summary>True if two players are allied (same team). Solo teams (the default) make this ⟺ a==b.</summary>
+    public bool SameTeam(int a, int b) => _players[a].Team == _players[b].Team;
+
+    /// <summary>Assign a player's team (immutable config; set before the match runs). Mirrors SetCpu.</summary>
+    public void SetTeam(int playerId, int team) => _players[playerId].Team = team;
+
     public SimWorld(MapGrid map, ulong seed, int playerCount = 2, FactionDef? faction = null)
     {
         Map = map;
         Rng = new DeterministicRandom(seed);
         _players = new PlayerState[playerCount];
         _factions = new FactionDef?[playerCount];
-        for (int i = 0; i < playerCount; i++) { _players[i] = new PlayerState(); _factions[i] = faction; }
+        for (int i = 0; i < playerCount; i++) { _players[i] = new PlayerState { Team = i }; _factions[i] = faction; }
     }
 
     /// <summary>Per-player factions; playerCount = factions.Length. The array is copied.</summary>
@@ -43,7 +49,7 @@ public sealed partial class SimWorld
         Rng = new DeterministicRandom(seed);
         int playerCount = factions.Length;
         _players = new PlayerState[playerCount];
-        for (int i = 0; i < playerCount; i++) _players[i] = new PlayerState();
+        for (int i = 0; i < playerCount; i++) _players[i] = new PlayerState { Team = i };
         _factions = (FactionDef?[])factions.Clone();
     }
 

@@ -12,6 +12,7 @@ public sealed class PlayerState
     public int SupplyCap { get; set; }
     public PlayerController Controller { get; set; } = PlayerController.Human;
     public AiDifficulty Difficulty { get; set; } = AiDifficulty.Easy; // only meaningful when Controller == Cpu
+    public int Team { get; set; }   // default 0; SimWorld sets it to the player's index (solo) at construction
 
     private readonly System.Collections.Generic.List<string> _appliedUpgrades = new();
     public System.Collections.Generic.IReadOnlyList<string> AppliedUpgrades => _appliedUpgrades;
