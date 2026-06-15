@@ -93,11 +93,19 @@ front-end is attached.
 ## Setup invariant
 
 Defeat is checked from the first tick, so **every participating player must start with
-≥ 1 building**, else they are eliminated at tick 0 (which would latch `Over`
-immediately — still deterministic, just an instant result). Normal match setup
-(`TestMap`) already gives each player buildings. The determinism-test scenario must give
-both players a building so it exercises the `InProgress` path across its run; if it
-currently does not, 5a adjusts the scenario (and re-pins the golden accordingly).
+≥ 1 building**, else they are eliminated at tick 0 (which latches `Over` immediately —
+still deterministic, just an instant result). Normal match setup (`TestMap`) already
+gives each player buildings.
+
+The determinism-test scenario is **left unchanged**: its player 1 is unit-only (no
+buildings), so once match state is hashed the scenario deterministically latches
+`Over`/`WinnerId == 0` at tick 0. This is harmless — the sim does not halt, the 500-tick
+trajectory is byte-identical to before, and only the (constant) match-state fields are
+added to each tick's hash. Adding a player-1 building to keep it `InProgress` would
+heavily perturb that carefully-tuned trajectory (passability, pathing, combat targets,
+entity-id ordering) for no determinism benefit, so we do not. The `InProgress` / `Over`
+/ draw / latch transitions are covered by dedicated unit tests instead, and a one-line
+note is added to the scenario doc-comment recording the tick-0 latch.
 
 ## Determinism
 
@@ -119,9 +127,10 @@ currently does not, 5a adjusts the scenario (and re-pins the golden accordingly)
 - **Latch:** once `Over`, a later tick that (somehow) adds a building does not change
   `WinnerId` or revert `Phase`.
 - **InProgress while both hold a building:** `Phase == InProgress`, `WinnerId == -1`.
-- **Determinism:** `StateHasher` v6 folds the new fields; golden re-pinned; both replay
+- **Determinism:** `StateHasher` v6 folds the new fields; golden re-pinned (the scenario
+  latches `Over`/winner-0 at tick 0, a constant per-tick contribution); both replay
   tests (`Same_Script...`, `Replaying_After_Full_Run...`) and the trajectory-fold test
-  pass; Debug == Release.
+  pass; Debug == Release; re-pin counterfactually verified.
 
 ## Decisions Log
 
