@@ -49,6 +49,20 @@ public partial class MenuScreen : CanvasLayer
         _diffLabel = new Label { Text = "Difficulty: " + _difficulty };
         box.AddChild(_diffLabel);
 
+        box.AddChild(new HSeparator());
+        box.AddChild(new Label { Text = "Multiplayer (LAN — 2-human 1v1, Reference faction):" });
+
+        var host = new Button { Text = "Host LAN game" };
+        host.Pressed += () => { MatchConfig.SetNetwork(isHost: true, ip: ""); GetTree().ReloadCurrentScene(); };
+        box.AddChild(host);
+
+        var ipEdit = new LineEdit { Text = "127.0.0.1", CustomMinimumSize = new Vector2(160, 0) };
+        box.AddChild(ipEdit);
+
+        var join = new Button { Text = "Join" };
+        join.Pressed += () => { MatchConfig.SetNetwork(isHost: false, ip: ipEdit.Text); GetTree().ReloadCurrentScene(); };
+        box.AddChild(join);
+
         var play = new Button { Text = "Play" };
         play.Pressed += OnPlay;
         box.AddChild(play);

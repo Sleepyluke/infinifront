@@ -1,4 +1,5 @@
 using Godot;
+using SimCore.Net;
 using SimCore.Sim;
 
 namespace LlmRts.Godot;
@@ -15,9 +16,11 @@ public partial class Main : Node2D
     public override void _Ready()
     {
         Runner = new SimRunner { Name = "SimRunner" };
-        Runner.Init(MatchConfig.Configured
-            ? MatchSetup.BuildStandard1v1(MatchConfig.Human, MatchConfig.Cpu, MatchConfig.Difficulty, seed: 42)
-            : TestMap.Build());
+        Runner.Init(MatchConfig.IsNetworked
+            ? MatchSetup.BuildVersus1v1(ReferenceFaction.Def, ReferenceFaction.Def, NetSession.MatchSeed)
+            : MatchConfig.Configured
+                ? MatchSetup.BuildStandard1v1(MatchConfig.Human, MatchConfig.Cpu, MatchConfig.Difficulty, seed: 42)
+                : TestMap.Build());
         AddChild(Runner);
 
         var mapView = new MapView { Name = "MapView" };
@@ -66,7 +69,11 @@ public partial class Main : Node2D
 
         GD.Print($"LlmRts boot OK units={Runner.World.Units.Count} buildings={Runner.World.Buildings.Count}");
 
-        if (!MatchConfig.Configured)
+        if (MatchConfig.IsNetworked)
+        {
+            StartNetworked();
+        }
+        else if (!MatchConfig.Configured)
         {
             Runner.Paused = true;                 // hold the sim behind the menu
             AddChild(new MenuScreen { Name = "Menu" });
@@ -77,6 +84,47 @@ public partial class Main : Node2D
             AddChild(gameOver);
             gameOver.Init(Runner);
         }
+    }
+
+    private void StartNetworked()
+    {
+        Runner.Paused = true;                     // hold until both peers are ready
+
+        var status = new CanvasLayer { Name = "NetStatus", Layer = 100 };
+        var statusLabel = new Label
+        {
+            Text = MatchConfig.IsHost ? "Hosting — waiting for opponent…" : $"Connecting to {MatchConfig.Ip}…",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        statusLabel.SetAnchorsPreset(Control.LayoutPreset.Center);
+        status.AddChild(statusLabel);
+        AddChild(status);
+
+        var net = new NetSession { Name = "Net" };
+        AddChild(net);
+
+        net.MatchReady += (localPlayerId, seed) =>
+        {
+            var coord = new SimCore.Net.LockstepCoordinator(localPlayerId, new[] { 0, 1 }, NetSession.InputDelay);
+            Runner.InitNetworked(Runner.World, coord, net, localPlayerId);
+            Selection.ControlledPlayer = localPlayerId;   // command only your own slot
+            statusLabel.Text = $"Connected — you are player {localPlayerId}";
+            status.Visible = false;
+            Runner.Paused = false;
+
+            var gameOver = new GameOverScreen { Name = "GameOver" };
+            AddChild(gameOver);
+            gameOver.Init(Runner);
+        };
+
+        net.PeerDropped += () =>
+        {
+            Runner.Paused = true;
+            status.Visible = true;
+            statusLabel.Text = "Opponent disconnected — match halted.";
+        };
+
+        if (MatchConfig.IsHost) net.Host(); else net.Join(MatchConfig.Ip);
     }
 
     public override void _UnhandledKeyInput(InputEvent e)
