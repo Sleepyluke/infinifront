@@ -48,6 +48,44 @@ public class CpuAiTests
         int c = 0; foreach (var u in w.Units) if (u.OwnerId == p && u.Harvester is not null) c++; return c;
     }
 
+    // A CPU player (id 1) at the given difficulty with a full base + big node; player 0 has a lone
+    // depot so the match stays InProgress.
+    private static SimWorld OneCpuWorld(AiDifficulty diff)
+    {
+        var w = new SimWorld(new MapGrid(40, 40), seed: 9, new FactionDef?[] { ReferenceFaction.Def, ReferenceFaction.Def });
+        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 3, 3, "depot");
+        w.Players[1].Minerals = 2000;
+        w.AddCompletedBuilding(1, ReferenceSpecs.Depot, 30, 30, "depot");
+        w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 33, 30, "barracks");
+        w.SpawnUnit(1, w.Map.CellCenter(30, 28), ReferenceSpecs.Fabber, "fabber");
+        w.AddResourceNode(28, 28, 100000);
+        w.SetCpu(1, diff);
+        return w;
+    }
+
+    [Fact]
+    public void Medium_Trains_More_Workers_Than_Easy_Cap()
+    {
+        var w = OneCpuWorld(AiDifficulty.Medium);
+        for (int t = 0; t < 3000; t++) w.Step(Empty);
+        int workers = Workers(w, 1);
+        Assert.True(workers > 8, $"Medium worker cap is 10 (> Easy's 8); got {workers}");
+        Assert.True(workers <= 10, $"Medium worker cap is 10; got {workers}");
+    }
+
+    [Fact]
+    public void Medium_Rebuilds_Lost_Production_Building()
+    {
+        var w = OneCpuWorld(AiDifficulty.Medium);
+        for (int t = 0; t < 300; t++) w.Step(Empty); // establish economy
+        // Destroy the CPU's only barracks (combat producer).
+        foreach (var b in w.Buildings) if (b.OwnerId == 1 && b.DefId == "barracks") { b.Hp = 0; break; }
+        w.Step(Empty); // RemoveDeadBuildings clears it
+        Assert.DoesNotContain(w.Buildings, b => b.OwnerId == 1 && b.DefId == "barracks");
+        for (int t = 0; t < 1000; t++) w.Step(Empty);
+        Assert.Contains(w.Buildings, b => b.OwnerId == 1 && b.DefId == "barracks"); // rebuilt
+    }
+
     [Fact]
     public void Easy_Trains_Workers_Up_To_Cap()
     {

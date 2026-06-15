@@ -11,6 +11,12 @@ public sealed partial class SimWorld
     private const int EasyAttackThreshold = 6;    // min combat units before attacking
     private const int EasyAttackInterval = 300;   // attack-move cadence (ticks)
 
+    // Medium-tier tunables: bigger economy, rebuilds lost production, earlier/sustained attacks.
+    private const int MediumWorkerCap = 10;
+    private const int MediumSupplyBuffer = 3;
+    private const int MediumAttackThreshold = 4;
+    private const int MediumAttackInterval = 150;
+
     /// <summary>Mark a player as CPU-controlled at the given difficulty (setup-time).</summary>
     public void SetCpu(int playerId, AiDifficulty difficulty)
     {
@@ -30,7 +36,8 @@ public sealed partial class SimWorld
             if (_players[p].Controller != PlayerController.Cpu) continue;
             switch (_players[p].Difficulty)
             {
-                default: EasyDecide(p); break; // Medium/Hard fall back to Easy until 5d
+                case AiDifficulty.Medium: MediumDecide(p); break;
+                default: EasyDecide(p); break; // Easy (Hard added in Task 3)
             }
         }
     }
@@ -69,6 +76,17 @@ public sealed partial class SimWorld
         foreach (var b in _buildings)
             if (b.OwnerId == p && b.IsComplete && b.Spec.CanTrain && b.DefId == producedByDefId) return b.Id;
         return 0;
+    }
+
+    /// <summary>True if p owns a supply-providing building still under construction. Guards the
+    /// supply step so it queues one depot at a time instead of spamming a fresh depot every
+    /// decision tick (each takes ~150 ticks to finish, far longer than the 10-tick cadence) —
+    /// the spam drains minerals and crowds the harvest area, stalling the economy.</summary>
+    private bool HasSupplyUnderConstruction(int p)
+    {
+        foreach (var b in _buildings)
+            if (b.OwnerId == p && !b.IsComplete && b.Spec.SupplyProvided > 0) return true;
+        return false;
     }
 
     private int CountUnits(int p, bool combat)
@@ -189,7 +207,8 @@ public sealed partial class SimWorld
 
         var sdef = SupplyDef(playerId);
         if (sdef is not null && ps.SupplyUsed >= ps.SupplyCap - supplyBuffer
-            && ps.Minerals >= sdef.Spec.MineralCost)
+            && ps.Minerals >= sdef.Spec.MineralCost
+            && !HasSupplyUnderConstruction(playerId)) // one at a time — don't spam depots while one is building
         {
             var bw = BuilderWorker(playerId);
             if (bw is not null)
@@ -232,5 +251,34 @@ public sealed partial class SimWorld
         MacroEconomy(playerId, EasyWorkerCap, EasySupplyBuffer);
         TrainCheapestCombat(playerId);
         MaybeAttack(playerId, EasyAttackThreshold, EasyAttackInterval);
+    }
+
+    /// <summary>If the player owns no building (any construction state) that produces its combat
+    /// unit, build that producer (when affordable, prereqs met, and a worker exists). The
+    /// supply/worker producer (depot) is rebuilt by MacroEconomy's supply step instead.</summary>
+    private void RebuildProduction(int playerId)
+    {
+        var cdef = CombatDef(playerId);
+        if (cdef is null) return;
+        foreach (var b in _buildings)
+            if (b.OwnerId == playerId && b.DefId == cdef.ProducedBy) return; // already have/building one
+        var bdef = FactionFor(playerId)?.GetBuilding(cdef.ProducedBy);
+        if (bdef is null) return;
+        var ps = _players[playerId];
+        if (ps.Minerals < bdef.Spec.MineralCost) return;
+        if (!PrerequisitesMet(playerId, bdef.Requires)) return;
+        var bw = BuilderWorker(playerId);
+        if (bw is null) return;
+        var cell = FreeFootprintNear(bw.Position, bdef.Spec.Width, bdef.Spec.Height);
+        if (cell is not null) Apply(new BuildCommand(playerId, bw.Id, bdef.Id, cell.Value.x, cell.Value.y));
+    }
+
+    /// <summary>Medium tier: bigger economy, rebuilds lost production, earlier/sustained attacks.</summary>
+    private void MediumDecide(int playerId)
+    {
+        MacroEconomy(playerId, MediumWorkerCap, MediumSupplyBuffer);
+        RebuildProduction(playerId);
+        TrainCheapestCombat(playerId);
+        MaybeAttack(playerId, MediumAttackThreshold, MediumAttackInterval);
     }
 }
