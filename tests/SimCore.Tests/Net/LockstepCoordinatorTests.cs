@@ -107,4 +107,34 @@ public class LockstepCoordinatorTests
         Assert.NotEmpty(seqA);
         Assert.Contains(seqA, s => s.Length > 0); // some ticks carried real commands
     }
+
+    [Fact]
+    public void Detects_Desync_On_Hash_Mismatch()
+    {
+        var c = new LockstepCoordinator(0, new[] { 0, 1 }, inputDelay: 0);
+        c.RecordLocalHash(5, 0xABCUL);
+        Assert.False(c.Desynced);
+        c.ReceiveHash(5, 1, 0xDEFUL); // a different hash for the same tick -> desync
+        Assert.True(c.Desynced);
+        Assert.Equal(5, c.DesyncTick);
+    }
+
+    [Fact]
+    public void Matching_Hashes_Are_Not_A_Desync()
+    {
+        var c = new LockstepCoordinator(0, new[] { 0, 1 }, inputDelay: 0);
+        c.RecordLocalHash(5, 0xABCUL);
+        c.ReceiveHash(5, 1, 0xABCUL); // same hash -> fine
+        Assert.False(c.Desynced);
+        Assert.Equal(-1, c.DesyncTick);
+    }
+
+    [Fact]
+    public void Hashes_For_Different_Ticks_Do_Not_Compare()
+    {
+        var c = new LockstepCoordinator(0, new[] { 0, 1 }, inputDelay: 0);
+        c.RecordLocalHash(5, 0xABCUL);
+        c.ReceiveHash(6, 1, 0xDEFUL); // different tick -> not compared
+        Assert.False(c.Desynced);
+    }
 }

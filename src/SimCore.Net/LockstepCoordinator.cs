@@ -13,6 +13,7 @@ public sealed class LockstepCoordinator
     private readonly int[] _humanPlayerIds;   // sorted ascending — defines the merge order
     private readonly int _inputDelay;
     private readonly Dictionary<(int tick, int playerId), CommandFrame> _frames = new();
+    private readonly Dictionary<(int tick, int playerId), ulong> _hashes = new();
     private int _submitTick;  // next local input tick to submit
     private int _stepTick;    // next execution tick to dispatch
 
@@ -74,5 +75,33 @@ public sealed class LockstepCoordinator
         merged = list;
         _stepTick++;
         return true;
+    }
+
+    /// <summary>True once two peers have reported different state hashes for the same tick.</summary>
+    public bool Desynced { get; private set; }
+
+    /// <summary>The tick at which a desync was first detected, or -1 if none.</summary>
+    public int DesyncTick { get; private set; } = -1;
+
+    /// <summary>Record this peer's own post-Step state hash for a tick (then broadcast it via M2).</summary>
+    public void RecordLocalHash(int tick, ulong hash) => RegisterHash(tick, _localPlayerId, hash);
+
+    /// <summary>Record a remote peer's reported state hash for a tick.</summary>
+    public void ReceiveHash(int tick, int playerId, ulong hash) => RegisterHash(tick, playerId, hash);
+
+    private void RegisterHash(int tick, int playerId, ulong hash)
+    {
+        if (Desynced) return;
+        _hashes[(tick, playerId)] = hash;
+        foreach (var pid in _humanPlayerIds) // any other peer's hash for this tick differing = desync
+        {
+            if (pid == playerId) continue;
+            if (_hashes.TryGetValue((tick, pid), out var other) && other != hash)
+            {
+                Desynced = true;
+                DesyncTick = tick;
+                return;
+            }
+        }
     }
 }
