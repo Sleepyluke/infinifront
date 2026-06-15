@@ -145,7 +145,6 @@ public partial class Main : Node2D
 
         var world = MatchSetup.BuildMatch(matchSlots, seed);
         Runner.Init(world);
-        View.ForceSync();                                   // re-sync views to the new world (map unchanged)
         Selection.ControlledPlayer = localSlot;
 
         // Frame the local player's base — the camera otherwise sits at player 0's corner (looks black
@@ -158,9 +157,12 @@ public partial class Main : Node2D
                 break;
             }
 
+        // Bring the match LIVE before touching the views, so a render glitch can never abort a
+        // started match (a 4-player render crash silently aborting this is exactly what bit us).
         var coord = new SimCore.Net.LockstepCoordinator(localSlot, humanIds, NetSession.InputDelay);
         Runner.InitNetworked(world, coord, net, localSlot);
         Runner.Paused = false;
+        try { View.ForceSync(); } catch (System.Exception ex) { GD.PrintErr($"ForceSync after start (non-fatal): {ex.Message}"); }
 
         var gameOver = new GameOverScreen { Name = "GameOver" };
         AddChild(gameOver);

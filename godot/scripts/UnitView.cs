@@ -20,7 +20,15 @@ public partial class UnitView : Node2D
     private bool _dying;
     private bool _isPatrolling;
 
-    public static readonly Color[] PlayerColors = { new(0.2f, 0.45f, 1f), new(1f, 0.35f, 0.25f) };
+    // One per player slot. Must cover the max players a match can have (4 — see MatchSetup corners),
+    // or rendering a higher-id player's unit throws IndexOutOfRange and aborts the match build.
+    public static readonly Color[] PlayerColors =
+    {
+        new(0.2f, 0.45f, 1f),    // P0 blue
+        new(1f, 0.35f, 0.25f),   // P1 red
+        new(0.3f, 0.85f, 0.4f),  // P2 green
+        new(0.95f, 0.8f, 0.2f),  // P3 yellow
+    };
 
     public void Init(Unit u, string unitKey, SimRunner runner)
     {
@@ -28,7 +36,7 @@ public partial class UnitView : Node2D
         UnitId = u.Id;
         OwnerId = u.OwnerId;
         _hp = _maxHp = u.Hp;
-        _fallbackColor = PlayerColors[u.OwnerId];
+        _fallbackColor = PlayerColors[u.OwnerId % PlayerColors.Length];   // wrap, never crash the match build
         var frames = SheetAnimator.Load(unitKey);
         if (frames is not null)
         {

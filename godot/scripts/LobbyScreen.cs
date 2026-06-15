@@ -119,6 +119,7 @@ public partial class LobbyScreen : CanvasLayer
         for (int i = 0; i < _slots.Count; i++)
         {
             var s = _slots[i];
+            int idx = i;   // per-iteration copy: button handlers fire later, when the for-loop's `i` == Count
             var row = new HBoxContainer();
             bool mine = s.OccupantPeerId == myPeer && s.Kind == SlotKind.Human;
             string who = s.Kind == SlotKind.Open ? "Open seat"
@@ -132,10 +133,10 @@ public partial class LobbyScreen : CanvasLayer
             {
                 // Buttons show the CURRENT value and toggle it on press. Slot 0 is always the host.
                 var kind = new Button { Text = s.Kind == SlotKind.Cpu ? "Kind: CPU" : "Kind: Open" };
-                kind.Pressed += () => { _slots[i] = s with { Kind = s.Kind == SlotKind.Cpu ? SlotKind.Open : SlotKind.Cpu, OccupantPeerId = 0 }; PushAndRender(); };
+                kind.Pressed += () => { _slots[idx] = s with { Kind = s.Kind == SlotKind.Cpu ? SlotKind.Open : SlotKind.Cpu, OccupantPeerId = 0 }; PushAndRender(); };
                 if (i != 0) row.AddChild(kind);
                 var team = new Button { Text = $"Team {(s.Team == 0 ? "A" : "B")}" };
-                team.Pressed += () => { _slots[i] = s with { Team = 1 - s.Team }; PushAndRender(); };
+                team.Pressed += () => { _slots[idx] = s with { Team = 1 - s.Team }; PushAndRender(); };
                 row.AddChild(team);
             }
 
@@ -160,7 +161,7 @@ public partial class LobbyScreen : CanvasLayer
             if (_isHost && s.Kind == SlotKind.Cpu)
             {
                 var diff = new Button { Text = $"Difficulty: {s.Difficulty}" };
-                diff.Pressed += () => { var nd = (AiDifficulty)(((int)s.Difficulty + 1) % 3); _slots[i] = s with { Difficulty = nd }; PushAndRender(); };
+                diff.Pressed += () => { var nd = (AiDifficulty)(((int)s.Difficulty + 1) % 3); _slots[idx] = s with { Difficulty = nd }; PushAndRender(); };
                 row.AddChild(diff);
             }
 
