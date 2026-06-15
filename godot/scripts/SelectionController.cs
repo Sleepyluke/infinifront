@@ -8,7 +8,7 @@ namespace LlmRts.Godot;
 /// <summary>Owns "who is selected" and "which player am I". Draws the drag box.</summary>
 public partial class SelectionController : Node2D
 {
-    public int ControlledPlayer { get; private set; }
+    public int ControlledPlayer { get; set; }
     public readonly HashSet<int> SelectedUnits = new();
     public int SelectedBuilding { get; private set; } // 0 = none
 
