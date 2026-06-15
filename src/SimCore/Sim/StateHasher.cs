@@ -26,6 +26,8 @@ public static class StateHasher
     /// the end of the per-unit loop, after patrol fields.
     /// MapGrid passability IS hashed (mutable mid-run since buildings
     /// and node depletion), packed 64 cells per Mix, along with Map.Version.
+    /// Match state (SimWorld.Phase + WinnerId) IS hashed (v6, Plan 5a) — folded at the
+    /// very end, after map passability.
     /// Patterns for new state: nullable objects need a presence marker before their
     /// fields; never hash collections by iterating a Dictionary (order is undefined).</summary>
     public static ulong Hash(SimWorld world)
@@ -148,6 +150,8 @@ public static class StateHasher
                 if (++bits == 64) { h = Mix(h, acc); acc = 0; bits = 0; }
             }
         if (bits > 0) h = Mix(h, acc);
+        h = Mix(h, (ulong)(int)world.Phase);
+        h = Mix(h, (ulong)world.WinnerId);
         return h;
     }
 
