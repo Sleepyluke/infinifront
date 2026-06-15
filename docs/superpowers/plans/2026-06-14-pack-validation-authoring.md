@@ -723,3 +723,33 @@ Co-Authored-By: RuFlo <ruv@ruv.net>"
 - **Spec coverage:** finding types + structural minimums + blank ids (Task 1); reachability → unbuildable unit/upgrade + no-seed-unit (Task 2); tier monotonicity (Task 3); point-budget balance + weights (Task 4); LoadAndValidate (Task 5); Faction Forge prompt (Task 6); determinism gate + finalize (Task 7). Every spec "In scope" item maps to a task.
 - **Placeholders:** none — every code/test step has complete code; the one forward reference (`BudgetWeights` in Task 1's signature) is satisfied by the Task-1 placeholder record, fleshed out in Task 4.
 - **Type consistency:** `Severity`/`ValidationFinding`/`PackValidator.Validate`/`BudgetWeights`/`PackReport`/`LoadAndValidate` used identically across tasks. Field accesses (`u.Spec.Weapon.CooldownTicks`, `wp.Range.Raw`, `faction.Mechanic`, `m.MaxShield`) verified against the engine record signatures listed above. Budget calibration numbers hand-verified against `ReferenceSpecs`.
+
+---
+
+## Execution Outcome (3d-2, completed 2026-06-14)
+
+All 7 tasks implemented via subagent-driven development (foreground implementers +
+two-stage spec/quality review per task). Final state on branch
+`feat/pack-validation`: **285 SimCore + 6 SpriteSlicer tests, 0 failures, Debug ==
+Release**. `SimCore` is byte-for-byte untouched (empty `git diff master --
+src/SimCore/`) — the validator lives entirely in `SimCore.Packs` and uses `double`
+math freely without touching the deterministic core, so the golden trajectory hash
+is unchanged at `5141900307592480923UL` and all determinism/replay tests pass.
+
+Delivered: `PackValidator.Validate(FactionDef, BudgetWeights?)` →
+`IReadOnlyList<ValidationFinding>` (Severity + stable Code + TargetId + Message);
+structural-minimums + blank-id + reachability (PRODUCER/UPGRADE_UNREACHABLE,
+NO_SEED_UNIT) Errors; TIER_NONMONOTONIC Warning; point-budget per-unit efficiency
+outliers (BUDGET_OVER/UNDERPOWERED Warnings) with tunable `BudgetWeights` and
+free-unit (cost 0) exclusion; `FactionPackLoader.LoadAndValidate` → `PackReport`;
+and `docs/faction-forge-prompt.md`, the LLM authoring prompt (both its worked
+examples were proven validator-clean by running them through the real loader).
+
+Quality reviews caught and we fixed: the upgrade-fixpoint test-coverage gap (now
+covered), the zero-cost free-unit false-flag (now excluded), and the missing
+UNDERPOWERED test path. The reference faction is fully clean (no errors, no
+tier/budget warnings) — the arc's dogfood guarantee.
+
+**The faction-pack arc (3a tiers → 3b upgrades → 3c mechanics → 3d-1 serialization
+→ 3d-2 validation & authoring) is complete.** Next roadmap item (outside this arc):
+plan 5 — CPU opponent + match flow.
