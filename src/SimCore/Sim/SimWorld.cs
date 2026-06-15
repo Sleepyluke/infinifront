@@ -99,6 +99,7 @@ public sealed partial class SimWorld
         UpdateShields();
         RemoveDead();
         RemoveDeadBuildings();
+        UpdateMatchState();
         Tick++;
     }
 
