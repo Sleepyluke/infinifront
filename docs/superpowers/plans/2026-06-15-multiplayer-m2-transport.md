@@ -889,3 +889,80 @@ Co-Authored-By: RuFlo <ruv@ruv.net>"
 - **Placeholder scan:** none — complete code in every code step. The two "confirm the property name" notes (Task 2 phase/owner names, Task 4 `ControlledPlayer` setter) are explicit verification steps with fallbacks, not deferred work.
 - **Type consistency:** `CommandFrame(int Tick, int PlayerId, IReadOnlyList<Command> Commands)`, `LockstepCoordinator(localPlayerId, int[]{0,1}, InputDelay)` with `SubmitLocal`/`Receive`/`TryDequeueStep(out)`/`RecordLocalHash`/`ReceiveHash`/`Desynced`/`DesyncTick`/`NextStepTick` (all from M1), `CommandCodec.FrameToBytes`/`FrameFromBytes`, `NetSession.Host()`/`Join(ip)`/`SendFrame`/`SendHash`/`MatchReady`/`FrameReceived`/`HashReceived`/`PeerDropped`/`Port`/`MatchSeed`/`InputDelay`, `SimRunner.InitNetworked(world, coord, net, localPlayerId)`/`Desynced`, `MatchConfig.SetNetwork`/`IsNetworked`/`IsHost`/`Ip`, `MatchSetup.BuildVersus1v1(p0, p1, seed)` — all names used identically across tasks. Command record field names match `Commands.cs`; `Fix.Raw`/`new Fix(long)`/`FixVec(Fix,Fix)` match `Math/`.
 - **Determinism:** SimCore's `StateHasher`/`DeterminismTests` are untouched (verified in Task 5); the codec is exact (longs/ints/strings, no floats); the coordinator's ascending-PlayerId merge feeds identical sequences to both peers.
+
+---
+
+## Execution Outcome (M2, completed 2026-06-15)
+
+All 5 tasks done via subagent-driven development (foreground implementers + review). Branch
+`feat/net-m2-transport`. **Final gate: Release == Debug, 345 SimCore + 6 SpriteSlicer tests, 0
+failures; Godot build 0 warnings / 0 errors; `StateHasher`/`DeterminismTests` byte-untouched →
+golden trajectory hash unchanged at `1571756151672809223UL`; working tree clean.**
+
+- `CommandCodec` (SimCore.Net): binary (de)serialization for all 11 command types + frame; 15
+  headless round-trip tests (per-type field values, non-first-in-frame fields, empty `int[]`,
+  empty frame, byte-stability). Wire format is little-endian + float-free (`Fix.Raw` longs).
+- `MatchSetup.BuildVersus1v1` (SimCore): 2-human 1v1 (no CPU), behavior-preserving extract of
+  `BuildMap()`. (Implementer corrected a plan typo: the owner property is `OwnerId`, not `Owner`.)
+- `NetSession` (Godot): ENet host/join, start handshake (host=player0, client=player1, seed
+  broadcast), host-relayed frame/hash RPCs (`ulong`↔`long` bits), `MatchReady`/`FrameReceived`/
+  `HashReceived`/`PeerDropped`. Godot `MethodName.X` RPC form compiled; SimCore.Net reference
+  added to the Godot csproj.
+- `SimRunner` networked loop: prime `InputDelay` frames → step only when every human's frame is
+  present → hash + broadcast → submit one frame per step (bounded latency) → halt on `Desynced`.
+  Single-player path unchanged. Minimal Host/Join menu + Main boot wiring; `Selection.Control`
+  `ledPlayer` locked to the local slot (added a public setter).
+
+**Network-layer logic review verdict (pre-playtest):** SAFE, no must-fix. The handshake/prime
+ordering race is sound — all RPCs share reliable channel 0, so `StartMatchRpc` (which subscribes
+the client to frames) is processed before the primed frames; no startup stall. Liveness, hash
+symmetry, determinism, and the `ulong`↔`long` round-trip all verified. A code comment now guards
+the channel-0 invariant against future regression.
+
+## Plan-M3 Inputs (carry-forward) — lobby + slot configuration
+
+M2's Host/Join is a throwaway-minimal 2-human launcher. M3 makes it a real lobby:
+- **A lobby scene** (before the match scene), not a reload-hack. Host configures N slots, each
+  = local-human / open-remote / CPU+difficulty, plus a per-slot faction from `PackCatalog`.
+  Host shares IP; clients connect and claim an open slot.
+- **Start broadcast:** host "Start" broadcasts the agreed config (slot→{kind, faction,
+  difficulty}, **host-chosen seed**) so every peer builds an identical world. Generalize
+  `MatchSetup` to N slots (reuse the role-resolved base placement); the lobby scene loads the
+  match scene with that config (replacing M2's fixed `BuildVersus1v1(Reference, Reference, 42)`).
+- **CPU-in-mix is already free:** `SimWorld.SetCpu` + the in-sim deterministic `UpdateAi` run on
+  every peer at zero network cost — M3 just exposes CPU slots in the lobby UI.
+- The M2 `NetSession` handshake (`StartMatchRpc`) becomes the carrier for the full start config;
+  player-id ↔ Godot-peer-id assignment generalizes beyond the fixed host=0/client=1.
+
+## Plan-M4 Inputs (carry-forward) — robustness
+
+- **Desync-halt screen:** a UI on `SimRunner.Desynced` (currently logs + pauses) surfacing
+  `DesyncTick` — turn "mystery drift" into a visible "desync at tick N".
+- **Input validation / anti-cheat (review-flagged):** reject any command whose `PlayerId` ≠ the
+  submitting peer's assigned slot — validate at the trust boundary (`SubmitLocal`, or
+  `ReceiveFrameRpc` vs `GetRemoteSenderId()`). Closes the M2 Tab-to-opponent cross-command grief
+  vector (deterministic, so not a desync — but lets a peer puppet the opponent's army). For M2,
+  `ControlledPlayer` is merely locked to the local slot; the Tab toggle is still reachable.
+- **Disconnect recovery:** beyond M2's pause-on-`PeerDropped` — concede/end options, maybe
+  AI-takeover (deferred).
+- **Bound the coordinator `_hashes` buffer (review-flagged in M1):** sliding-window eviction so a
+  long match doesn't accumulate hashes. (A background tool auto-drafted a correct version during
+  M2; it was discarded to keep provenance clean — re-implement deliberately + reviewed here.)
+- **Input-delay tuning:** expose `NetSession.InputDelay` (latency vs stall trade-off).
+
+## Two-instance LAN playtest checklist (for the user)
+
+Build/run two instances (e.g. `scripts/play.ps1` twice, or two exported copies). Smoke test:
+1. **Connect:** instance A → menu → "Host LAN game" (shows "Hosting — waiting for opponent…").
+   Instance B → menu → keep IP `127.0.0.1` → "Join". Both should flip to a running match;
+   A is player 0, B is player 1 (each commands only its own units).
+2. **Lockstep sync:** issue moves/builds/trains on BOTH instances. Units, economy (minerals,
+   supply), and combat should look **identical** on both screens (allowing for the small input
+   delay). No "Desync detected" in the console.
+3. **Win/lose:** destroy one side's last building → **Victory on the winner's screen, Defeat on
+   the loser's**, on both instances, at the same time.
+4. **Disconnect:** close one instance → the other shows "Opponent disconnected — match halted."
+5. **(Optional) LAN:** repeat across two machines using the host's LAN IP (port 7777 open).
+
+Report anything that diverges (especially a desync banner — that's a real determinism bug to
+chase, and `DesyncTick` in the console pinpoints it).
