@@ -82,4 +82,37 @@ public class CpuAiTests
         foreach (var b in w.Buildings) if (b.OwnerId == 1 && b.Spec.SupplyProvided > 0) depots++;
         Assert.True(depots >= 2, $"expected CPU to build at least one extra supply building, total {depots}");
     }
+
+    [Fact]
+    public void Easy_Trains_Combat_Units()
+    {
+        var w = EasyEcoWorld();
+        for (int t = 0; t < 1500; t++) w.Step(Empty);
+        int combat = 0;
+        foreach (var u in w.Units) if (u.OwnerId == 1 && u.Weapon is not null) combat++;
+        Assert.True(combat > 0, "expected CPU to train combat units from the barracks");
+    }
+
+    [Fact]
+    public void Easy_Attacks_Enemy_Base_Once_Army_Is_Built()
+    {
+        // Player 0 (human) has a building to be the attack target; player 1 is the CPU.
+        var w = new SimWorld(new MapGrid(40, 40), seed: 5, new FactionDef?[] { ReferenceFaction.Def, ReferenceFaction.Def });
+        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 3, 3, "depot"); // human base (attack target)
+        w.Players[1].Minerals = 5000;
+        w.AddCompletedBuilding(1, ReferenceSpecs.Depot, 30, 30, "depot");
+        w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 33, 30, "barracks");
+        w.SpawnUnit(1, w.Map.CellCenter(30, 28), ReferenceSpecs.Fabber, "fabber");
+        w.AddResourceNode(28, 28, 5000);
+        w.SetCpu(1, AiDifficulty.Easy);
+
+        for (int t = 0; t < 2000; t++) w.Step(Empty);
+
+        // Once the CPU has >= threshold combat units, an attack tick issues an attack-move toward
+        // the human base — at least one CPU combat unit should be attack-moving (or moving west).
+        bool attacking = false;
+        foreach (var u in w.Units)
+            if (u.OwnerId == 1 && u.Weapon is not null && (u.IsAttackMoving || u.HasMoveOrder)) attacking = true;
+        Assert.True(attacking, "expected CPU combat units to be attack-moving toward the enemy base");
+    }
 }

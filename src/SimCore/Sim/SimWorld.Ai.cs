@@ -79,6 +79,20 @@ public sealed partial class SimWorld
         return c;
     }
 
+    /// <summary>Count of p's units of a given def that are already queued (in production) across all
+    /// owned buildings. Added so the worker cap counts in-flight trains, not just completed units —
+    /// otherwise the AI re-queues every decision while completed &lt; cap and overshoots once a batch
+    /// lands (worse when minerals are tight, e.g. once army training competes for income).</summary>
+    private int QueuedUnits(int p, string unitDefId)
+    {
+        int c = 0;
+        foreach (var b in _buildings)
+            if (b.OwnerId == p)
+                foreach (var it in b.Queue)
+                    if (it.UnitDefId == unitDefId) c++;
+        return c;
+    }
+
     /// <summary>First idle worker of p (no harvest/move/attack order); null if none.</summary>
     private Unit? IdleWorker(int p)
     {
@@ -117,6 +131,20 @@ public sealed partial class SimWorld
         return best;
     }
 
+    /// <summary>Center of the first enemy building (lowest id, stable order); null if none.</summary>
+    private FixVec? EnemyBaseCenter(int p)
+    {
+        foreach (var b in _buildings) if (b.OwnerId != p) return CenterOf(b);
+        return null;
+    }
+
+    private int[] CombatUnitIds(int p)
+    {
+        var ids = new System.Collections.Generic.List<int>();
+        foreach (var u in _units) if (u.OwnerId == p && u.Weapon is not null) ids.Add(u.Id);
+        return ids.ToArray();
+    }
+
     /// <summary>First placeable wxh footprint near pos (ring scan) within build range of pos; null if none.</summary>
     private (int x, int y)? FreeFootprintNear(FixVec pos, int w, int h)
     {
@@ -137,9 +165,10 @@ public sealed partial class SimWorld
     {
         var ps = _players[playerId];
 
-        // 1. Train workers up to the cap.
+        // 1. Train workers up to the cap (count in-flight trains so we don't overshoot the cap).
         var wdef = WorkerDef(playerId);
-        if (wdef is not null && CountUnits(playerId, combat: false) < EasyWorkerCap)
+        if (wdef is not null
+            && CountUnits(playerId, combat: false) + QueuedUnits(playerId, wdef.Id) < EasyWorkerCap)
         {
             int prod = ProducerBuildingId(playerId, wdef.ProducedBy);
             if (prod != 0) Apply(new TrainCommand(playerId, prod, wdef.Id));
@@ -170,6 +199,27 @@ public sealed partial class SimWorld
             {
                 var cell = FreeFootprintNear(bw.Position, sdef.Spec.Width, sdef.Spec.Height);
                 if (cell is not null) Apply(new BuildCommand(playerId, bw.Id, sdef.Id, cell.Value.x, cell.Value.y));
+            }
+        }
+
+        // 4. Train the cheapest combat unit when supply/minerals allow.
+        var cdef = CombatDef(playerId);
+        if (cdef is not null)
+        {
+            int prod = ProducerBuildingId(playerId, cdef.ProducedBy);
+            if (prod != 0 && ps.Minerals >= cdef.Spec.MineralCost
+                && ps.SupplyUsed + cdef.Spec.SupplyCost <= ps.SupplyCap)
+                Apply(new TrainCommand(playerId, prod, cdef.Id));
+        }
+
+        // 5. Occasionally attack-move the whole army at the enemy base.
+        if (CountUnits(playerId, combat: true) >= EasyAttackThreshold && Tick % EasyAttackInterval == 0)
+        {
+            var target = EnemyBaseCenter(playerId);
+            if (target is not null)
+            {
+                var army = CombatUnitIds(playerId);
+                if (army.Length > 0) Apply(new AttackMoveCommand(playerId, army, target.Value));
             }
         }
     }
