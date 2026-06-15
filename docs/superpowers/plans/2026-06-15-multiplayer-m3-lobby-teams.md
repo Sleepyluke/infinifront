@@ -1117,3 +1117,73 @@ Co-Authored-By: RuFlo <ruv@ruv.net>"
 - **Placeholder scan:** complete code in every code step. "Confirm signature" notes (Weapon/BuildingSpec/AddCompletedBuilding ctors, FogView/GameOverScreen current logic, FactionEntry fields) are explicit verification steps with fallbacks — the implementer checks the real source and adjusts the *test/wiring*, never the sim.
 - **Type consistency:** `MatchSlot(FactionDef, PlayerController, AiDifficulty, int Team)`, `BuildMatch(IReadOnlyList<MatchSlot>, ulong)`, `SameTeam`/`SetTeam`, `LobbySlot(SlotKind, int, string, AiDifficulty, long)`, `SlotKind{Open,Human,Cpu}`, `LobbyCodec.SlotsToBytes/SlotsFromBytes`, `NetSession.SetLobby/StartMatch/RequestMyFaction/RequestClaim` + events `LobbyUpdated/MatchStarting/FactionRequested/ClaimRequested/PeerConnectedToLobby`, `LockstepCoordinator(localSlot, humanIds, InputDelay)`, `Runner.InitNetworked(world, coord, net, localSlot)` — names used identically across tasks. `Team` not hashed; `IsVisibleTo`/`IsExploredBy` signatures unchanged (behavior only).
 - **Build ordering caveat:** Task 7 (NetSession) may leave Main non-compiling until Task 9; the green Godot build lands at Task 9 Step 5. Flagged in both tasks.
+
+---
+
+## Execution Outcome (M3, completed 2026-06-15)
+
+All 10 tasks done via subagent-driven development (foreground implementers + two-stage review).
+Branch `feat/net-m3-lobby-teams`. **Final gate: Release == Debug, 362 SimCore + 6 SpriteSlicer
+tests, 0 failures; Godot build 0/0; `StateHasher`/`DeterminismTests` byte-untouched → golden
+trajectory hash unchanged at `1571756151672809223UL` (the solo-team keystone held across every
+SimCore change — no re-pin); working tree clean.** A 2v2 four-CPU determinism replay proves team
+play (shared vision, ally-immune combat, AI team-awareness) is deterministic.
+
+SimCore (TDD, all behavior-preserving for solo): per-player `Team` + `SameTeam`/`SetTeam`;
+ally-immune `AcquireTarget` + no-friendly-fire; team victory (representative `WinnerId`); shared
+team vision (`IsVisibleTo`/`IsExploredBy` union); `MatchSetup.BuildMatch(2–4 slots, 4-corner map)`
+with the 1v1 builders delegating to it. **Review-caught gap fixed:** three CPU AI enemy-detection
+helpers (`EnemyBaseCenter`/`ThreatenedBuildingCenter`/`EnemyCombatCount`) used owner-based "enemy",
+so a CPU would target its ally — routed through `SameTeam`. A completeness review confirmed every
+friend/enemy site is now team-aware and every "is-mine" site correctly stays owner-based, with no
+targeting↔retaliation inconsistency.
+
+`SimCore.Net`: `LobbyCodec`/`LobbySlot` (headless round-trip tested). Godot (compile + reviewed):
+`NetSession` lobby protocol (host-authoritative sync + start-config broadcast, reliable channel-0);
+`LobbyScreen` (slot table, claim, faction pick, Start gate); build-on-start wiring (resolve
+factions → `BuildMatch` → `Runner.Init` + `ForceSync` + coordinator with `humanIds`); team-aware
+`GameOverScreen`; `FogView` needed no change (it already reads the now-team-aware visibility).
+
+**Network-layer logic review verdict (pre-playtest):** safe for a same-machine 2v2 playtest after
+one must-fix, which was applied: a client that owns no Human slot at Start now **aborts loudly**
+instead of silently driving slot 0 (the host's army). Also gated the debug Tab side-switch behind
+`!IsNetworked`. Pack-content divergence across machines desync-halts loudly (not silent corruption)
+and is deferred to M4.
+
+## Two-instance 2v2 LAN playtest checklist (for the user)
+
+Launch **two** instances (`scripts/play.ps1` twice). Same machine → same `packs/` → faction
+resolution is automatically identical.
+1. **Host a lobby:** Instance A → menu → "Host LAN game". Configure a 2v2: e.g. slot 0 = you
+   (team A), add slots so one team is you + a CPU and the other is two CPUs (use the Kind/Team/
+   Difficulty/faction controls). Instance B → "Join" (`127.0.0.1`).
+2. **Claim a seat (important):** on Instance B, click **Claim** on an open seat and wait for the
+   lobby to show you as a Human slot before the host presses **Start Match**. (If a peer owns no
+   seat at Start, it now aborts with a console error rather than mis-driving the host.)
+3. **Start + team sync:** both instances build the same 2v2 and run. Each human commands only its
+   own units. Allies **do not** attack each other; you **share vision** with your ally. Economy/
+   combat look identical on both screens; no "DESYNC detected" in the console.
+4. **Team victory:** eliminate a team's buildings → **Victory** on the winning team's members and
+   **Defeat** on the losers, on both instances.
+5. **CPU teammates:** confirm a CPU ally attacks the *enemy* base (not yours) and doesn't fight
+   your units.
+6. Report any desync (with the console `DesyncTick`) or any peer that mis-controls another's units.
+
+## Plan-M4 Inputs (carry-forward) — robustness + polish
+
+- **Desync-halt screen** on `SimRunner.Desynced` (currently logs+pauses), surfacing `DesyncTick`.
+- **Anti-cheat / input validation:** reject any command whose `PlayerId` ≠ the submitting peer's
+  slot at the receive boundary (`ReceiveFrameRpc` vs `GetRemoteSenderId()`'s assigned slot). The
+  M3 mitigations (`localSlot` lock + abort-on-no-slot + Tab gating) are UI-side only.
+- **Lobby hardening (review-flagged):** the host's Kind/Remove-slot actions can orphan a remote
+  occupant (it falls into the abort path); tighten the host UI / `OnStart` to reject Human slots
+  whose `OccupantPeerId` isn't a currently-connected peer, and don't let Remove drop an occupied
+  slot.
+- **Cross-machine pack sync (review-flagged):** hash each peer's `PackCatalog` in the start
+  handshake (or sync the chosen pack bytes) so a pack-content mismatch is reported in the lobby
+  instead of desync-halting at tick 0. (Same-machine play is unaffected.)
+- **Bound the coordinator `_hashes` buffer** (sliding window) — carried from M1.
+- **Disconnect recovery** beyond pause-on-`PeerDropped`; **input-delay tuning** (`NetSession.InputDelay`).
+- **Team-color polish (review note):** ally units render in their own player color via shared
+  vision (correct), but aren't "always-visible" like your own; optional ally-always-visible/team
+  tint for a polished 2v2 (`Minimap.cs`, unit tinting).
