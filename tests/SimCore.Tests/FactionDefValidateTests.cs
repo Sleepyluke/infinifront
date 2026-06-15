@@ -44,6 +44,54 @@ public class FactionDefValidateTests
     }
 
     [Fact]
+    public void Unit_Requiring_Upgrade_Validates_Empty()
+    {
+        // A unit may require a researched upgrade (the runtime Has() gate accepts
+        // building OR upgrade); Validate must not flag it as an unknown building.
+        var f = new FactionDef("f", "F",
+            units: new[] { new UnitDef("elite", 2, "rax", new[] { "combat-training" }, U()) },
+            buildings: new[] { new BuildingDef("rax", 1, new string[0], B()) },
+            upgrades: new[]
+            {
+                new UpgradeDef("combat-training", 1, "rax", new string[0], new[] { "*" },
+                    UpgradeStat.Damage, Fix.FromInt(1), 50, 50),
+            });
+        Assert.Empty(f.Validate());
+    }
+
+    [Fact]
+    public void Building_Requiring_Upgrade_Validates_Empty()
+    {
+        var f = new FactionDef("f", "F",
+            units: new[] { new UnitDef("trooper", 1, "rax", new string[0], U()) },
+            buildings: new[]
+            {
+                new BuildingDef("rax", 1, new string[0], B()),
+                new BuildingDef("citadel", 2, new[] { "adv-construction" }, B()),
+            },
+            upgrades: new[]
+            {
+                new UpgradeDef("adv-construction", 1, "rax", new string[0], new[] { "*" },
+                    UpgradeStat.Damage, Fix.FromInt(1), 50, 50),
+            });
+        Assert.Empty(f.Validate());
+    }
+
+    [Fact]
+    public void Building_Dangling_Requires_Is_Flagged()
+    {
+        // A building requirement that is neither a building nor an upgrade is still an error.
+        var f = new FactionDef("f", "F",
+            units: new[] { new UnitDef("trooper", 1, "rax", new string[0], U()) },
+            buildings: new[]
+            {
+                new BuildingDef("rax", 1, new string[0], B()),
+                new BuildingDef("citadel", 2, new[] { "ghost" }, B()),
+            });
+        Assert.Contains(f.Validate(), e => e.Contains("citadel") && e.Contains("ghost"));
+    }
+
+    [Fact]
     public void Building_Prerequisite_Cycle_Is_Flagged()
     {
         var f = new FactionDef("f", "F",
