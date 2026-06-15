@@ -28,6 +28,8 @@ public static class StateHasher
     /// and node depletion), packed 64 cells per Mix, along with Map.Version.
     /// Match state (SimWorld.Phase + WinnerId) IS hashed (v6, Plan 5a) — folded at the
     /// very end, after map passability.
+    /// PlayerState.Controller + Difficulty ARE hashed (v7, Plan 5c) — constant config, folded
+    /// per player after SupplyCap.
     /// Patterns for new state: nullable objects need a presence marker before their
     /// fields; never hash collections by iterating a Dictionary (order is undefined).</summary>
     public static ulong Hash(SimWorld world)
@@ -90,6 +92,8 @@ public static class StateHasher
             h = Mix(h, (ulong)p.Minerals);
             h = Mix(h, (ulong)p.SupplyUsed);
             h = Mix(h, (ulong)p.SupplyCap);
+            h = Mix(h, (ulong)(int)p.Controller);
+            h = Mix(h, (ulong)(int)p.Difficulty);
             h = Mix(h, (ulong)p.AppliedUpgrades.Count);
             foreach (var up in p.AppliedUpgrades) // already sorted → deterministic
             {

@@ -108,6 +108,7 @@ public sealed partial class SimWorld
         EnsureOccupancy();
         UpdateVision();
         foreach (var cmd in commands) Apply(cmd);
+        UpdateAi();
         UpdateCombat();
         MoveUnits();
         UpdateHarvest();

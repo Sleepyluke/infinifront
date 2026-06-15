@@ -40,7 +40,7 @@ public class ReferenceSpecsTests
     {
         Assert.True(ReferenceSpecs.Depot.SupplyProvided > 0);
         Assert.True(ReferenceSpecs.Depot.IsDepot);
-        Assert.False(ReferenceSpecs.Depot.CanTrain);
+        Assert.True(ReferenceSpecs.Depot.CanTrain); // depot trains workers + provides supply
     }
 
     [Fact]

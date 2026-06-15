@@ -222,9 +222,12 @@ Add to `CpuAiTests.cs` (inside the class):
 
 ```csharp
     // A CPU player (id 1) with a depot+barracks+fabber, a node, and minerals.
+    // Player 0 gets a lone depot too, so the match stays InProgress (otherwise it latches
+    // Over at tick 0 and UpdateAi's Phase==Over guard would stop the CPU after one tick).
     private static SimWorld EasyEcoWorld()
     {
         var w = new SimWorld(new MapGrid(40, 40), seed: 3, new FactionDef?[] { ReferenceFaction.Def, ReferenceFaction.Def });
+        w.AddCompletedBuilding(0, ReferenceSpecs.Depot, 3, 3, "depot"); // keep player 0 alive → match InProgress
         w.Players[1].Minerals = 1000;
         w.AddCompletedBuilding(1, ReferenceSpecs.Depot, 30, 30, "depot");
         w.AddCompletedBuilding(1, ReferenceSpecs.Barracks, 33, 30, "barracks");
@@ -629,3 +632,28 @@ Co-Authored-By: RuFlo <ruv@ruv.net>"
 - **Spec coverage:** controller/difficulty + SetCpu + UpdateAi phase + hash v7 + re-pin (Task 1); role resolution + Easy economy/supply (Task 2); Easy army + weak attack (Task 3); CPU determinism proof + gate + 5d inputs (Task 4). Stateless Easy (no AI memory hashed) — only constant Controller/Difficulty added. Every spec "In scope" item maps to a task.
 - **Placeholder scan:** none — complete code in every step; the golden `<NEW>` is computed at execution time from the failing-test message (protocol) and counterfactually verified in Task 1 Step 7.
 - **Type consistency:** `PlayerController`/`AiDifficulty`/`SetCpu`/`UpdateAi`/`EasyDecide`/`WorkerDef`/`CombatDef`/`SupplyDef`/`ProducerBuildingId`/`CountUnits`/`IdleWorker`/`NearestNodeId`/`FreeFootprintNear`/`EnemyBaseCenter`/`CombatUnitIds` named consistently across tasks; command shapes match `Commands.cs`; `_units`/`_buildings`/`_nodes`/`_players`/`FactionFor`/`GetUnit`/`CenterOf`/`FootprintCenter`/`FootprintPlaceable` verified against source; `Fix.FromInt(16)` build-range² matches `Apply(BuildCommand)`.
+
+---
+
+## Plan-5d Inputs (carry-forward)
+
+5c shipped the deterministic CPU framework + Easy tier. 5d adds Medium & Hard:
+- **Dispatch:** `UpdateAi` switches on `Difficulty`; add `MediumDecide`/`HardDecide` (currently
+  all fall back to `EasyDecide`). Share role helpers in `SimWorld.Ai.cs`.
+- **Medium = stronger/earlier sustained pressure + rebuild:** lower attack threshold, shorter
+  attack interval, rebuild lost production/supply, maybe a second combat unit type. May need a
+  small hashed `AiState` (e.g., attack timing) — add to PlayerState or a per-player struct and
+  fold into StateHasher (v8) with a golden re-pin.
+- **Hard = reactive macro + aggression:** scale army before committing, pull back when behind,
+  defend threatened buildings (attack-move home when an enemy is near a base).
+- **Determinism:** keep the golden scenario human-only; prove each tier with CPU-vs-CPU
+  determinism tests. Any new AI memory must be hashed.
+- **Shared helpers / fixes from 5c:** `WorkerDef`/`CombatDef`/`SupplyDef`/`ProducerBuildingId`/
+  `CountUnits`/`QueuedUnits`/`IdleWorker`/`BuilderWorker`/`NearestNodeId`/`FreeFootprintNear`/
+  `EnemyBaseCenter`/`CombatUnitIds` are reusable. NOTE the worker-cap guard must include
+  `QueuedUnits` (in-flight trains) or it overshoots; supply-build uses `BuilderWorker` (a
+  harvesting worker can place a building without interrupting its route).
+- **Reference-faction fix (5c):** `ReferenceSpecs.Depot` is now `CanTrain: true` (the fabber's
+  producer); `packs/reference/faction.json` regenerated to match.
+- **5e (Godot):** `SetCpu(playerId, difficulty)` is the entry point the match-setup menu calls;
+  wire it into `TestMap`/match setup when building the menu.
