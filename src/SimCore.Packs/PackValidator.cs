@@ -85,6 +85,32 @@ public static class PackValidator
             foreach (var req in g.Requires) CheckTier(g.Id, g.Tier, req);
         }
 
+        // Point-budget balance: per-unit efficiency outliers vs the faction's own mean.
+        var w = weights ?? BudgetWeights.Default;
+        var units = faction.UnitList;
+        if (units.Count >= 2)
+        {
+            var eff = new double[units.Count];
+            double sum = 0;
+            for (int i = 0; i < units.Count; i++)
+            {
+                double power = UnitPower(units[i], faction, w);
+                double cost = units[i].Spec.MineralCost + w.Supply * units[i].Spec.SupplyCost;
+                eff[i] = power / System.Math.Max(1.0, cost);
+                sum += eff[i];
+            }
+            double mean = sum / units.Count;
+            for (int i = 0; i < units.Count; i++)
+            {
+                if (eff[i] > mean * (1 + w.Tolerance))
+                    findings.Add(new(Severity.Warning, "BUDGET_OVERPOWERED", units[i].Id,
+                        $"unit '{units[i].Id}' efficiency {eff[i]:0.00} is well above the faction mean {mean:0.00}"));
+                else if (eff[i] < mean * (1 - w.Tolerance))
+                    findings.Add(new(Severity.Warning, "BUDGET_UNDERPOWERED", units[i].Id,
+                        $"unit '{units[i].Id}' efficiency {eff[i]:0.00} is well below the faction mean {mean:0.00}"));
+            }
+        }
+
         return findings;
     }
 
@@ -152,11 +178,31 @@ public static class PackValidator
             if (!reachB.Contains(req) && !reachU.Contains(req)) return false;
         return true;
     }
+
+    private static double UnitPower(UnitDef u, FactionDef f, BudgetWeights w)
+    {
+        double p = w.Hp * u.Spec.MaxHp;
+        if (u.Spec.Weapon is { } wp)
+        {
+            p += w.Dps * (wp.Damage * (w.RefCooldown / System.Math.Max(1, wp.CooldownTicks)));
+            p += w.Range * (wp.Range.Raw / 65536.0);
+        }
+        p += w.Speed * (u.Spec.Speed.Raw / 65536.0);
+        p += w.Sight * u.Spec.SightRange;
+        if (u.Spec.Harvester is not null) p += w.Harvester;
+        if (f.Mechanic is { Kind: MechanicKind.RegeneratingShields } m) p += w.Shield * m.MaxShield;
+        return p;
+    }
 }
 
-/// <summary>Tunable coefficients for the point-budget balance heuristic (Task 4).
-/// First-pass defaults to be tuned by playtesting.</summary>
-public sealed record BudgetWeights
+/// <summary>Tunable coefficients for the point-budget balance heuristic. First-pass
+/// defaults calibrated so the reference faction's four units land within the band
+/// (efficiencies ~1.21–1.88, mean ~1.44, all within ±40%). NOT claimed to be true
+/// balance — a sane default the author can override; tune by playtesting.</summary>
+public sealed record BudgetWeights(
+    double Hp = 1.0, double Dps = 8.0, double Range = 4.0, double Speed = 30.0,
+    double Sight = 2.0, double Harvester = 40.0, double Shield = 1.5, double Supply = 25.0,
+    double RefCooldown = 10.0, double Tolerance = 0.40)
 {
     public static readonly BudgetWeights Default = new();
 }

@@ -151,4 +151,42 @@ public class PackValidatorTests
         var findings = PackValidator.Validate(ReferenceFaction.Def);
         Assert.False(Has(findings, "TIER_NONMONOTONIC"));
     }
+
+    [Fact]
+    public void Reference_faction_is_within_budget_band()
+    {
+        // The default weights are calibrated so the reference faction has no budget warnings.
+        var findings = PackValidator.Validate(ReferenceFaction.Def);
+        Assert.False(Has(findings, "BUDGET_OVERPOWERED"));
+        Assert.False(Has(findings, "BUDGET_UNDERPOWERED"));
+    }
+
+    [Fact]
+    public void Grossly_efficient_unit_is_flagged_overpowered()
+    {
+        // 3 normal units (power 100 / cost 100 => eff 1.0) + 1 god unit (power 300 / cost 100 => eff 3.0).
+        // mean = 1.5, band [0.9, 2.1]; only the god unit exceeds it.
+        UnitSpec spec(int hp, int cost) => new(hp, Fix.Zero, cost, 0, 50); // no weapon/speed/harvester
+        var f = new FactionDef("x", "X",
+            new[]
+            {
+                Unit("a", "hq", spec: spec(100, 100)),
+                Unit("b", "hq", spec: spec(100, 100)),
+                Unit("c", "hq", spec: spec(100, 100)),
+                Unit("god", "hq", spec: spec(300, 100)),
+            },
+            new[] { Bld("hq") });
+        var findings = PackValidator.Validate(f);
+        Assert.True(Has(findings, "BUDGET_OVERPOWERED", "god"));
+        Assert.False(Has(findings, "BUDGET_OVERPOWERED", "a"));
+    }
+
+    [Fact]
+    public void Single_unit_faction_skips_budget_check()
+    {
+        var f = new FactionDef("x", "X", new[] { Unit("solo", "hq") }, new[] { Bld("hq") });
+        var findings = PackValidator.Validate(f);
+        Assert.False(Has(findings, "BUDGET_OVERPOWERED"));
+        Assert.False(Has(findings, "BUDGET_UNDERPOWERED"));
+    }
 }
