@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\src\SimCore\SimCore.csproj" />
+    <ProjectReference Include="..\src\SimCore.Packs\SimCore.Packs.csproj" />
   </ItemGroup>
 </Project>
