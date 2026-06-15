@@ -158,7 +158,7 @@ public sealed partial class SimWorld
                     var tu = GetUnit(atk.TargetId);
                     var tb = tu is null ? GetBuilding(atk.TargetId) : null;
                     if (tu is null && tb is null) continue;
-                    if ((tu?.OwnerId ?? tb!.OwnerId) == atk.PlayerId) continue; // no friendly fire
+                    if (SameTeam(tu?.OwnerId ?? tb!.OwnerId, atk.PlayerId)) continue; // no friendly fire (team-aware)
                     // Fog: reject explicit attacks on targets whose cell isn't visible to the issuing player.
                     if (FogEnabled)
                     {
