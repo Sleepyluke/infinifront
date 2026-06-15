@@ -63,7 +63,39 @@ public static class PackValidator
             findings.Add(new(Severity.Error, "NO_SEED_UNIT", null,
                 "no unit can be built from the starting tech (faction is unplayable)"));
 
+        // Tier monotonicity (a prerequisite at a HIGHER tier is almost always a slip).
+        void CheckTier(string dependentId, int dependentTier, string prereqId)
+        {
+            var pt = TierOf(faction, prereqId);
+            if (pt is int t && t > dependentTier)
+                findings.Add(new(Severity.Warning, "TIER_NONMONOTONIC", dependentId,
+                    $"'{dependentId}' (tier {dependentTier}) requires '{prereqId}' (tier {t}), a higher tier"));
+        }
+
+        foreach (var u in faction.UnitList)
+        {
+            CheckTier(u.Id, u.Tier, u.ProducedBy);
+            foreach (var req in u.Requires) CheckTier(u.Id, u.Tier, req);
+        }
+        foreach (var b in faction.BuildingList)
+            foreach (var req in b.Requires) CheckTier(b.Id, b.Tier, req);
+        foreach (var g in faction.UpgradeList)
+        {
+            CheckTier(g.Id, g.Tier, g.ResearchedAt);
+            foreach (var req in g.Requires) CheckTier(g.Id, g.Tier, req);
+        }
+
         return findings;
+    }
+
+    private static int? TierOf(FactionDef f, string id)
+    {
+        if (string.IsNullOrEmpty(id)) return null;
+        var b = f.GetBuilding(id);
+        if (b is not null) return b.Tier;
+        var u = f.GetUpgrade(id);
+        if (u is not null) return u.Tier;
+        return null; // unknown id: referential checks elsewhere handle it
     }
 
     /// <summary>Buildings constructible from t0: a monotonic least-fixpoint (only ever adds,

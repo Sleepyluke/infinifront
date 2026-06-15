@@ -133,4 +133,22 @@ public class PackValidatorTests
             new[] { armor });
         Assert.False(Has(PackValidator.Validate(f), "PRODUCER_UNREACHABLE", "tank")); // reachable via reachable upgrade
     }
+
+    [Fact]
+    public void Tier1_unit_requiring_tier3_building_warns()
+    {
+        var f = new FactionDef("x", "X",
+            new[] { Unit("grunt", "hq", new[] { "citadel" }, tier: 1) },
+            new[] { Bld("hq"), Bld("citadel", new[] { "hq" }, tier: 3) });
+        var findings = PackValidator.Validate(f);
+        Assert.True(Has(findings, "TIER_NONMONOTONIC", "grunt"));
+        Assert.Equal(Severity.Warning, findings.First(x => x.Code == "TIER_NONMONOTONIC").Severity);
+    }
+
+    [Fact]
+    public void Reference_faction_has_no_tier_warnings()
+    {
+        var findings = PackValidator.Validate(ReferenceFaction.Def);
+        Assert.False(Has(findings, "TIER_NONMONOTONIC"));
+    }
 }
