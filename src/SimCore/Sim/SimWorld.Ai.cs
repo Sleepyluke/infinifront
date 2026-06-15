@@ -160,21 +160,20 @@ public sealed partial class SimWorld
         return null;
     }
 
-    /// <summary>Easy tier economy: train workers, harvest, build supply. Filled further in Task 3.</summary>
-    private void EasyDecide(int playerId)
+    /// <summary>Economy macro: train workers up to workerCap (counting in-flight trains), send
+    /// idle workers to the nearest node, and build supply when within supplyBuffer of the cap.</summary>
+    private void MacroEconomy(int playerId, int workerCap, int supplyBuffer)
     {
         var ps = _players[playerId];
 
-        // 1. Train workers up to the cap (count in-flight trains so we don't overshoot the cap).
         var wdef = WorkerDef(playerId);
         if (wdef is not null
-            && CountUnits(playerId, combat: false) + QueuedUnits(playerId, wdef.Id) < EasyWorkerCap)
+            && CountUnits(playerId, combat: false) + QueuedUnits(playerId, wdef.Id) < workerCap)
         {
             int prod = ProducerBuildingId(playerId, wdef.ProducedBy);
             if (prod != 0) Apply(new TrainCommand(playerId, prod, wdef.Id));
         }
 
-        // 2. Send every idle worker to the nearest node.
         var idleIds = new System.Collections.Generic.List<int>();
         foreach (var u in _units)
             if (u.OwnerId == playerId && u.Harvester is not null
@@ -188,10 +187,8 @@ public sealed partial class SimWorld
             if (node != 0) Apply(new HarvestCommand(playerId, new[] { id }, node));
         }
 
-        // 3. Build a supply building when near the cap. Use any worker (idle preferred): placing a
-        //    building does not interrupt harvesting, and at the worker cap every worker is busy.
         var sdef = SupplyDef(playerId);
-        if (sdef is not null && ps.SupplyUsed >= ps.SupplyCap - EasySupplyBuffer
+        if (sdef is not null && ps.SupplyUsed >= ps.SupplyCap - supplyBuffer
             && ps.Minerals >= sdef.Spec.MineralCost)
         {
             var bw = BuilderWorker(playerId);
@@ -201,19 +198,24 @@ public sealed partial class SimWorld
                 if (cell is not null) Apply(new BuildCommand(playerId, bw.Id, sdef.Id, cell.Value.x, cell.Value.y));
             }
         }
+    }
 
-        // 4. Train the cheapest combat unit when supply/minerals allow.
+    /// <summary>Train the cheapest combat unit from its producer when minerals + supply allow.</summary>
+    private void TrainCheapestCombat(int playerId)
+    {
+        var ps = _players[playerId];
         var cdef = CombatDef(playerId);
-        if (cdef is not null)
-        {
-            int prod = ProducerBuildingId(playerId, cdef.ProducedBy);
-            if (prod != 0 && ps.Minerals >= cdef.Spec.MineralCost
-                && ps.SupplyUsed + cdef.Spec.SupplyCost <= ps.SupplyCap)
-                Apply(new TrainCommand(playerId, prod, cdef.Id));
-        }
+        if (cdef is null) return;
+        int prod = ProducerBuildingId(playerId, cdef.ProducedBy);
+        if (prod != 0 && ps.Minerals >= cdef.Spec.MineralCost
+            && ps.SupplyUsed + cdef.Spec.SupplyCost <= ps.SupplyCap)
+            Apply(new TrainCommand(playerId, prod, cdef.Id));
+    }
 
-        // 5. Occasionally attack-move the whole army at the enemy base.
-        if (CountUnits(playerId, combat: true) >= EasyAttackThreshold && Tick % EasyAttackInterval == 0)
+    /// <summary>Attack-move the whole army at the enemy base when the army is big enough, on cadence.</summary>
+    private void MaybeAttack(int playerId, int threshold, int interval)
+    {
+        if (CountUnits(playerId, combat: true) >= threshold && Tick % interval == 0)
         {
             var target = EnemyBaseCenter(playerId);
             if (target is not null)
@@ -222,5 +224,13 @@ public sealed partial class SimWorld
                 if (army.Length > 0) Apply(new AttackMoveCommand(playerId, army, target.Value));
             }
         }
+    }
+
+    /// <summary>Easy tier: light macro + cheapest-combat army + occasional weak attack.</summary>
+    private void EasyDecide(int playerId)
+    {
+        MacroEconomy(playerId, EasyWorkerCap, EasySupplyBuffer);
+        TrainCheapestCombat(playerId);
+        MaybeAttack(playerId, EasyAttackThreshold, EasyAttackInterval);
     }
 }
