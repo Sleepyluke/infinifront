@@ -19,21 +19,29 @@ public sealed partial class SimWorld
         return true;
     }
 
-    /// <summary>Recompute the latched outcome: Over when &lt;= 1 player still owns a building.
-    /// Runs after RemoveDeadBuildings each tick; never reverts once Over. Reads only hashed
-    /// building ownership — deterministic, integer-only.</summary>
+    /// <summary>Recompute the latched outcome: Over when all players that still own a building
+    /// share ONE team (or none remain = draw). WinnerId = the lowest-index surviving building-owner
+    /// (a representative of the winning team); -1 on a draw. Solo teams reduce this to the old
+    /// "≤1 player owns a building" rule, so the golden is unchanged. Reads only hashed building
+    /// ownership + immutable team config — deterministic, integer-only.</summary>
     private void UpdateMatchState()
     {
         if (Phase == MatchPhase.Over) return;
         var hasBuilding = new bool[_players.Length];
         foreach (var b in _buildings) hasBuilding[b.OwnerId] = true;
-        int aliveCount = 0, lastAlive = -1;
+
+        int firstOwner = -1;          // lowest-index player still owning a building (the representative)
+        bool multipleTeams = false;
         for (int p = 0; p < hasBuilding.Length; p++)
-            if (hasBuilding[p]) { aliveCount++; lastAlive = p; }
-        if (aliveCount <= 1)
+        {
+            if (!hasBuilding[p]) continue;
+            if (firstOwner < 0) firstOwner = p;
+            else if (!SameTeam(p, firstOwner)) { multipleTeams = true; break; }
+        }
+        if (!multipleTeams)
         {
             Phase = MatchPhase.Over;
-            WinnerId = aliveCount == 1 ? lastAlive : -1;
+            WinnerId = firstOwner;    // -1 if nobody owns a building (draw)
         }
     }
 }
