@@ -43,9 +43,18 @@ public static class PackValidator
         foreach (var u in faction.UnitList)
         {
             if (IsBuildable(u, reachB, reachU)) { buildable++; continue; }
-            string why = !reachB.Contains(u.ProducedBy)
-                ? $"its producer '{u.ProducedBy}' is unreachable"
-                : "one of its prerequisites is unreachable";
+            string why;
+            if (!reachB.Contains(u.ProducedBy))
+            {
+                why = $"its producer '{u.ProducedBy}' is unreachable";
+            }
+            else
+            {
+                string? badReq = null;
+                foreach (var req in u.Requires)
+                    if (!reachB.Contains(req) && !reachU.Contains(req)) { badReq = req; break; }
+                why = $"its prerequisite '{badReq}' is unreachable";
+            }
             findings.Add(new(Severity.Error, "PRODUCER_UNREACHABLE", u.Id,
                 $"unit '{u.Id}' can never be built ({why})"));
         }
@@ -57,6 +66,9 @@ public static class PackValidator
         return findings;
     }
 
+    /// <summary>Buildings constructible from t0: a monotonic least-fixpoint (only ever adds,
+    /// over a finite set) so it always terminates; cycles never enter since a node is added
+    /// only once all its building prerequisites are already reachable.</summary>
     private static HashSet<string> ReachableBuildings(FactionDef f)
     {
         var reach = new HashSet<string>();
@@ -76,6 +88,9 @@ public static class PackValidator
         return reach;
     }
 
+    /// <summary>Upgrades researchable from t0: same monotonic least-fixpoint, terminating;
+    /// an upgrade enters only when its ResearchedAt building is reachable and every prereq
+    /// (building or earlier upgrade) is already reachable, so upgrade-requires-upgrade chains resolve.</summary>
     private static HashSet<string> ReachableUpgrades(FactionDef f, HashSet<string> reachB)
     {
         var reach = new HashSet<string>();
@@ -96,6 +111,8 @@ public static class PackValidator
         return reach;
     }
 
+    /// <summary>True iff the unit can ever be produced: its producer building is reachable and
+    /// every prerequisite (a building or an upgrade) is reachable in the respective set.</summary>
     private static bool IsBuildable(UnitDef u, HashSet<string> reachB, HashSet<string> reachU)
     {
         if (!reachB.Contains(u.ProducedBy)) return false;

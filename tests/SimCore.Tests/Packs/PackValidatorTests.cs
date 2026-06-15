@@ -95,4 +95,42 @@ public class PackValidatorTests
         Assert.False(Has(findings, "PRODUCER_UNREACHABLE"));
         Assert.False(Has(findings, "NO_SEED_UNIT"));
     }
+
+    [Fact]
+    public void Multi_level_upgrade_chain_is_reachable()
+    {
+        var baseUp = new UpgradeDef("base", 1, "lab", None, new[] { "worker" }, UpgradeStat.Damage, Fix.FromInt(1), 50, 50);
+        var advUp  = new UpgradeDef("adv", 2, "lab", new[] { "base" }, new[] { "worker" }, UpgradeStat.Damage, Fix.FromInt(1), 50, 50);
+        var f = new FactionDef("x", "X",
+            new[] { Unit("worker", "hq") },
+            new[] { Bld("hq"), Bld("lab", new[] { "hq" }) },
+            new[] { baseUp, advUp });
+        Assert.False(Has(PackValidator.Validate(f), "UPGRADE_UNREACHABLE")); // base and adv both reachable
+    }
+
+    [Fact]
+    public void Upgrade_requiring_unreachable_upgrade_is_flagged()
+    {
+        var baseUp = new UpgradeDef("base", 1, "lab", None, new[] { "worker" }, UpgradeStat.Damage, Fix.FromInt(1), 50, 50);
+        var advUp  = new UpgradeDef("adv", 2, "lab", new[] { "base" }, new[] { "worker" }, UpgradeStat.Damage, Fix.FromInt(1), 50, 50);
+        var f = new FactionDef("x", "X",
+            new[] { Unit("worker", "hq") },
+            new[] { Bld("hq"), Bld("lab", new[] { "ghost" }) }, // lab unreachable -> base & adv unreachable (transitive)
+            new[] { baseUp, advUp });
+        var findings = PackValidator.Validate(f);
+        Assert.True(Has(findings, "UPGRADE_UNREACHABLE", "base"));
+        Assert.True(Has(findings, "UPGRADE_UNREACHABLE", "adv"));
+    }
+
+    [Fact]
+    public void Unit_reachable_via_upgrade_requirement_is_not_flagged()
+    {
+        // tank's producer (hq) is reachable AND its required upgrade (armor, at reachable lab) is reachable.
+        var armor = new UpgradeDef("armor", 1, "lab", None, new[] { "tank" }, UpgradeStat.Damage, Fix.FromInt(1), 50, 50);
+        var f = new FactionDef("x", "X",
+            new[] { Unit("worker", "hq"), Unit("tank", "hq", new[] { "armor" }) },
+            new[] { Bld("hq"), Bld("lab", new[] { "hq" }) },
+            new[] { armor });
+        Assert.False(Has(PackValidator.Validate(f), "PRODUCER_UNREACHABLE", "tank")); // reachable via reachable upgrade
+    }
 }
