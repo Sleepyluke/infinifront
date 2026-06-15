@@ -13,6 +13,7 @@ public partial class Main : Node2D
     public CommandController Commands { get; private set; } = null!;
     private FogView _fogView = null!;
     private Minimap _minimap = null!;
+    private CameraRig _camera = null!;
 
     public override void _Ready()
     {
@@ -35,6 +36,7 @@ public partial class Main : Node2D
 
         var camera = new CameraRig { Name = "Camera" };
         AddChild(camera);
+        _camera = camera;
 
         Selection = new SelectionController { Name = "Selection" };
         AddChild(Selection);
@@ -101,6 +103,7 @@ public partial class Main : Node2D
 
         net.MatchStarting += (slots, seed) =>
         {
+            GD.Print($"NET: MatchStarting fired ({slots.Count} slots, seed {seed})");
             lobby.QueueFree();
             BuildNetworkedMatch(net, slots, seed, factions);
         };
@@ -126,6 +129,10 @@ public partial class Main : Node2D
             if (s.Kind == SlotKind.Human && s.OccupantPeerId == myPeer) localSlot = i;
         }
 
+        string slotDump = "";
+        for (int i = 0; i < slots.Count; i++) slotDump += $" {i}:{slots[i].Kind}/occ{slots[i].OccupantPeerId}/t{slots[i].Team}";
+        GD.Print($"NET START: myPeer={myPeer} localSlot={localSlot} humanIds=[{string.Join(",", humanIds)}] slots=[{slotDump} ]");
+
         // No Human slot is occupied by THIS peer (e.g. the host re-flipped/removed our seat before
         // Start, or our claim hadn't landed). Entering with a fallback slot would silently drive
         // another player's units with NO desync to flag it — so halt loudly instead of guessing.
@@ -140,6 +147,16 @@ public partial class Main : Node2D
         Runner.Init(world);
         View.ForceSync();                                   // re-sync views to the new world (map unchanged)
         Selection.ControlledPlayer = localSlot;
+
+        // Frame the local player's base — the camera otherwise sits at player 0's corner (looks black
+        // through fog for any other player until you pan there).
+        foreach (var b in world.Buildings)
+            if (b.OwnerId == localSlot)
+            {
+                _camera.CenterOn(new Vector2((b.CellX + b.Spec.Width / 2f) * RenderMath.CellPx,
+                                             (b.CellY + b.Spec.Height / 2f) * RenderMath.CellPx));
+                break;
+            }
 
         var coord = new SimCore.Net.LockstepCoordinator(localSlot, humanIds, NetSession.InputDelay);
         Runner.InitNetworked(world, coord, net, localSlot);

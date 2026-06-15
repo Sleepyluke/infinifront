@@ -57,5 +57,8 @@ public partial class CameraRig : Camera2D
         }
     }
 
+    /// <summary>Snap the camera to a world position (used to frame the local player's base on match start).</summary>
+    public void CenterOn(Vector2 world) => Position = world;
+
     private void ApplyZoom() => Zoom = Vector2.One * ZoomSteps[_zoomIdx];
 }

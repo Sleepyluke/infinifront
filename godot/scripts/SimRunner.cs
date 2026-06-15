@@ -29,6 +29,12 @@ public partial class SimRunner : Node
     /// <summary>Fired (with the desync tick) the first time the coordinator latches a desync.</summary>
     public event System.Action<int>? Desynced;
 
+    // Diagnostics surfaced on the HUD (so a screenshot reveals lockstep health).
+    public bool IsNetworked => _networked;
+    public int NetLocalPlayer => _localPlayerId;
+    /// <summary>Consecutive frames we wanted to step but couldn't (no peer frames). Grows if stalled.</summary>
+    public int NetStallFrames { get; private set; }
+
     public void Init(SimWorld world) => World = world;
 
     public void Enqueue(Command c) => _queue.Add(c);
@@ -73,6 +79,7 @@ public partial class SimRunner : Node
     {
         _accum += (float)delta;
         if (_accum > 5 * TickSeconds) _accum = 5 * TickSeconds;
+        bool wantedToStep = _accum >= TickSeconds;
         int steps = 0;
         while (_accum >= TickSeconds && steps < 5)
         {
@@ -93,6 +100,8 @@ public partial class SimRunner : Node
             Ticked?.Invoke();
             steps++;
         }
+        if (steps > 0) NetStallFrames = 0;
+        else if (wantedToStep) NetStallFrames++;   // wanted to advance but had no peer frames
         Alpha = _accum / TickSeconds;
     }
 

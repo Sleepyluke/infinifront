@@ -57,7 +57,11 @@ public partial class Hud : CanvasLayer
         var fogTag = _runner.World.FogEnabled ? "" : "   [FOG OFF]";
         _resources.Text = $"Minerals {p.Minerals}   Supply {p.SupplyUsed}/{p.SupplyCap}" +
                           (_runner.Paused ? "   [PAUSED]" : "") + fogTag;
-        _playerBadge.Text = $"Commanding: Player {_sel.ControlledPlayer + 1}";
+        string net = _runner.IsNetworked
+            ? $"   ·   NET p{_runner.NetLocalPlayer}  tick {_runner.TickCount}" +
+              (_runner.NetStallFrames > 10 ? "  [STALLED — waiting for peer frames]" : "")
+            : "";
+        _playerBadge.Text = $"Commanding: Player {_sel.ControlledPlayer + 1}{net}";
         _playerBadge.Modulate = UnitView.PlayerColors[_sel.ControlledPlayer];
         UpdateSelectionInfo();
     }
