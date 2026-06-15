@@ -189,4 +189,39 @@ public class PackValidatorTests
         Assert.False(Has(findings, "BUDGET_OVERPOWERED"));
         Assert.False(Has(findings, "BUDGET_UNDERPOWERED"));
     }
+
+    [Fact]
+    public void Weakling_among_strong_units_is_flagged_underpowered()
+    {
+        UnitSpec spec(int hp, int cost) => new(hp, Fix.Zero, cost, 0, 50);
+        var f = new FactionDef("x", "X",
+            new[]
+            {
+                Unit("s1", "hq", spec: spec(300, 100)),
+                Unit("s2", "hq", spec: spec(300, 100)),
+                Unit("s3", "hq", spec: spec(300, 100)),
+                Unit("weak", "hq", spec: spec(50, 100)),
+            },
+            new[] { Bld("hq") });
+        var findings = PackValidator.Validate(f);
+        Assert.True(Has(findings, "BUDGET_UNDERPOWERED", "weak"));
+        Assert.False(Has(findings, "BUDGET_UNDERPOWERED", "s1"));
+    }
+
+    [Fact]
+    public void Free_unit_is_excluded_from_budget_check()
+    {
+        UnitSpec spec(int hp, int cost) => new(hp, Fix.Zero, cost, 0, 50);
+        var f = new FactionDef("x", "X",
+            new[]
+            {
+                Unit("worker", "hq", spec: spec(50, 0)),   // free: cost 0, would be a huge outlier if included
+                Unit("a", "hq", spec: spec(100, 100)),
+                Unit("b", "hq", spec: spec(100, 100)),
+            },
+            new[] { Bld("hq") });
+        var findings = PackValidator.Validate(f);
+        Assert.False(Has(findings, "BUDGET_OVERPOWERED", "worker"));
+        Assert.False(Has(findings, "BUDGET_UNDERPOWERED", "worker"));
+    }
 }

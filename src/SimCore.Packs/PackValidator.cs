@@ -85,29 +85,32 @@ public static class PackValidator
             foreach (var req in g.Requires) CheckTier(g.Id, g.Tier, req);
         }
 
-        // Point-budget balance: per-unit efficiency outliers vs the faction's own mean.
+        // Point-budget balance: per-unit efficiency (power/cost) outliers vs the faction's
+        // own mean. Free units (cost <= 0, e.g. a granted starting worker) are EXCLUDED —
+        // their balance lives outside the cost economy and including them would skew the mean
+        // and false-flag them. Most meaningful with >= 3 cost-bearing units (with exactly two
+        // divergent units, both can fall outside the band).
         var w = weights ?? BudgetWeights.Default;
-        var units = faction.UnitList;
-        if (units.Count >= 2)
+        var priced = new List<(string Id, double Eff)>();
+        foreach (var u in faction.UnitList)
         {
-            var eff = new double[units.Count];
-            double sum = 0;
-            for (int i = 0; i < units.Count; i++)
+            double cost = u.Spec.MineralCost + w.Supply * u.Spec.SupplyCost;
+            if (cost <= 0) continue; // free unit: not balance-checked by cost-efficiency
+            priced.Add((u.Id, UnitPower(u, faction, w) / cost));
+        }
+        if (priced.Count >= 2)
+        {
+            double mean = 0;
+            foreach (var p in priced) mean += p.Eff;
+            mean /= priced.Count;
+            foreach (var p in priced)
             {
-                double power = UnitPower(units[i], faction, w);
-                double cost = units[i].Spec.MineralCost + w.Supply * units[i].Spec.SupplyCost;
-                eff[i] = power / System.Math.Max(1.0, cost);
-                sum += eff[i];
-            }
-            double mean = sum / units.Count;
-            for (int i = 0; i < units.Count; i++)
-            {
-                if (eff[i] > mean * (1 + w.Tolerance))
-                    findings.Add(new(Severity.Warning, "BUDGET_OVERPOWERED", units[i].Id,
-                        $"unit '{units[i].Id}' efficiency {eff[i]:0.00} is well above the faction mean {mean:0.00}"));
-                else if (eff[i] < mean * (1 - w.Tolerance))
-                    findings.Add(new(Severity.Warning, "BUDGET_UNDERPOWERED", units[i].Id,
-                        $"unit '{units[i].Id}' efficiency {eff[i]:0.00} is well below the faction mean {mean:0.00}"));
+                if (p.Eff > mean * (1 + w.Tolerance))
+                    findings.Add(new(Severity.Warning, "BUDGET_OVERPOWERED", p.Id,
+                        $"unit '{p.Id}' efficiency {p.Eff:0.00} is well above the faction mean {mean:0.00}"));
+                else if (p.Eff < mean * (1 - w.Tolerance))
+                    findings.Add(new(Severity.Warning, "BUDGET_UNDERPOWERED", p.Id,
+                        $"unit '{p.Id}' efficiency {p.Eff:0.00} is well below the faction mean {mean:0.00}"));
             }
         }
 
