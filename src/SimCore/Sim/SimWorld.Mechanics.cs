@@ -22,6 +22,15 @@ public sealed partial class SimWorld
         target.TicksSinceDamaged = 0;
     }
 
+    /// <summary>Lifesteal: the attacker heals RegenPerTick HP each landed hit (capped at MaxHp).
+    /// No-op for factions without the Lifesteal mechanic, so it never touches the golden scenario.</summary>
+    private void ApplyLifesteal(Unit attacker)
+    {
+        if (MechanicFor(attacker) is not { Kind: MechanicKind.Lifesteal } m) return;
+        if (attacker.Hp <= 0 || attacker.Hp >= attacker.MaxHp) return;
+        attacker.Hp = System.Math.Min(attacker.MaxHp, attacker.Hp + m.RegenPerTick);
+    }
+
     /// <summary>Per-tick faction-mechanic update (regenerating shields OR HP regeneration),
     /// keyed per unit off its owner's faction. Units whose owner has no mechanic are skipped
     /// (zero churn). See the TicksSinceDamaged note: ApplyDamage resets to 0 (UpdateCombat,

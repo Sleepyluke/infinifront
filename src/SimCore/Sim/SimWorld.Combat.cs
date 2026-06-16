@@ -176,6 +176,7 @@ public sealed partial class SimWorld
                 {
                     if (targetUnit is not null) ApplyDamage(targetUnit, EffectiveDamage(u));
                     else targetBuilding!.Hp -= EffectiveDamage(u);
+                    ApplyLifesteal(u);
                     u.Weapon.CooldownRemaining = EffectiveCooldownTicks(u);
                 }
             }
