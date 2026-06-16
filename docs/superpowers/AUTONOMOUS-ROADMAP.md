@@ -34,7 +34,7 @@ Very cheap, numerous, fragile, and **regenerate HP when out of combat** (signatu
 
 - [ ] **R1 — Faction design** (this doc) — DONE inline above.
 - [x] **R2 — Concord pack** — DONE. `packs/concord/faction.json` (shields, validates clean, no budget warnings) + ConcordPackTests + 4 building sprites (core/conclave/capacitor/ward, synthetic-energy look). Commits 198d9bd + adfaf7d. Golden untouched (375 tests).
-- [ ] **R3 — Driftborn pack** — author `packs/driftborn/faction.json` (stat-diff, no mechanic) + validate + art. Golden-safe.
+- [x] **R3 — Driftborn pack** — DONE. `packs/driftborn/faction.json` (cheap/fast, no mechanic, validates clean) + DriftbornPackTests + 4 building sprites (roost/garage/cache/scrapgun, salvaged scrap look). Commits 3da72f4 + cbbf5f9. Golden untouched (376 tests).
 - [ ] **R4 — Regeneration mechanic** — `MechanicKind.Regeneration` + heal hook (golden-safe, reuse TicksSinceDamaged) + pack DTO/mapper support + tests + gate.
 - [ ] **R5 — Mycel pack** — author `packs/mycel/faction.json` (regeneration) + validate + art.
 - [ ] **R6 — Packs-dir runtime fix** — make `PackCatalog` find repo `packs/` at runtime so new factions are selectable in-game (the 5e caveat). Compile-checked; flag for playtest.
@@ -51,3 +51,4 @@ Very cheap, numerous, fragile, and **regenerate HP when out of combat** (signatu
 
 - 2026-06-15 — Roadmap + 3 faction designs written (R1). Loop started.
 - 2026-06-15 — R2 Concord faction shipped: pack JSON (validates clean, no budget warnings) + ConcordPackTests + 4 building sprites. 375 SimCore tests, golden 1571756151672809223UL untouched. Pure data + render = golden-safe. (Note: headless import re-touches existing .import files with line-ending-only churn — `git diff` empty; `git checkout` them before commits to keep tree clean.) Next: R3 Driftborn.
+- 2026-06-16 — R3 Driftborn faction shipped: pack JSON (validates clean) + DriftbornPackTests + 4 building sprites (salvaged scrap look). 376 tests, golden untouched. Three visually-distinct factions now (Vanguard industrial / Concord energy / Driftborn scrap). Next: R4 Regeneration mechanic (code — new MechanicKind, golden-safe via reusing TicksSinceDamaged).
