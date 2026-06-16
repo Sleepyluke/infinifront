@@ -1,0 +1,157 @@
+{
+  "id": "sanguine",
+  "name": "The Sanguine",
+  "units": [
+    {
+      "id": "leech",
+      "tier": 1,
+      "producedBy": "den",
+      "requires": [],
+      "maxHp": 40,
+      "speed": 0.3125,
+      "mineralCost": 50,
+      "supplyCost": 1,
+      "buildTimeTicks": 95,
+      "sightRange": 6,
+      "harvester": {
+        "carryCapacity": 5,
+        "gatherTicks": 10
+      }
+    },
+    {
+      "id": "fang",
+      "tier": 1,
+      "producedBy": "warren",
+      "requires": [],
+      "maxHp": 75,
+      "speed": 0.3125,
+      "mineralCost": 65,
+      "supplyCost": 2,
+      "buildTimeTicks": 100,
+      "sightRange": 6,
+      "weapon": {
+        "damage": 7,
+        "range": 1,
+        "cooldownTicks": 8
+      }
+    },
+    {
+      "id": "quill",
+      "tier": 1,
+      "producedBy": "warren",
+      "requires": [],
+      "maxHp": 50,
+      "speed": 0.25,
+      "mineralCost": 70,
+      "supplyCost": 2,
+      "buildTimeTicks": 110,
+      "sightRange": 8,
+      "weapon": {
+        "damage": 6,
+        "range": 4,
+        "cooldownTicks": 8
+      }
+    },
+    {
+      "id": "prowler",
+      "tier": 1,
+      "producedBy": "warren",
+      "requires": [],
+      "maxHp": 55,
+      "speed": 0.5,
+      "mineralCost": 75,
+      "supplyCost": 2,
+      "buildTimeTicks": 110,
+      "sightRange": 9,
+      "weapon": {
+        "damage": 6,
+        "range": 2,
+        "cooldownTicks": 6
+      }
+    },
+    {
+      "id": "maw",
+      "tier": 2,
+      "producedBy": "warren",
+      "requires": [
+        "den"
+      ],
+      "maxHp": 200,
+      "speed": 0.1875,
+      "mineralCost": 200,
+      "supplyCost": 4,
+      "buildTimeTicks": 240,
+      "sightRange": 7,
+      "weapon": {
+        "damage": 22,
+        "range": 4,
+        "cooldownTicks": 16
+      }
+    }
+  ],
+  "buildings": [
+    {
+      "id": "den",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 400,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 120,
+      "buildTimeTicks": 150,
+      "supplyProvided": 8,
+      "isDepot": true,
+      "canTrain": true,
+      "sightRange": 9
+    },
+    {
+      "id": "warren",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 320,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 130,
+      "buildTimeTicks": 160,
+      "canTrain": true,
+      "sightRange": 8
+    },
+    {
+      "id": "sac",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 150,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 80,
+      "buildTimeTicks": 90,
+      "supplyProvided": 8,
+      "sightRange": 5
+    },
+    {
+      "id": "bramble",
+      "tier": 1,
+      "requires": [
+        "den"
+      ],
+      "maxHp": 220,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 120,
+      "buildTimeTicks": 140,
+      "sightRange": 9,
+      "weapon": {
+        "damage": 11,
+        "range": 6,
+        "cooldownTicks": 9
+      }
+    }
+  ],
+  "upgrades": [],
+  "mechanic": {
+    "kind": "Lifesteal",
+    "maxShield": 0,
+    "regenPerTick": 3,
+    "regenDelayTicks": 0
+  }
+}
