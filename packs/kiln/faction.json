@@ -1,0 +1,157 @@
+{
+  "id": "kiln",
+  "name": "The Kiln",
+  "units": [
+    {
+      "id": "cinder",
+      "tier": 1,
+      "producedBy": "forge",
+      "requires": [],
+      "maxHp": 45,
+      "speed": 0.25,
+      "mineralCost": 55,
+      "supplyCost": 1,
+      "buildTimeTicks": 100,
+      "sightRange": 6,
+      "harvester": {
+        "carryCapacity": 5,
+        "gatherTicks": 10
+      }
+    },
+    {
+      "id": "ember",
+      "tier": 1,
+      "producedBy": "crucible",
+      "requires": [],
+      "maxHp": 60,
+      "speed": 0.1875,
+      "mineralCost": 70,
+      "supplyCost": 2,
+      "buildTimeTicks": 115,
+      "sightRange": 8,
+      "weapon": {
+        "damage": 7,
+        "range": 4,
+        "cooldownTicks": 12
+      }
+    },
+    {
+      "id": "slag",
+      "tier": 1,
+      "producedBy": "crucible",
+      "requires": [],
+      "maxHp": 70,
+      "speed": 0.1875,
+      "mineralCost": 90,
+      "supplyCost": 2,
+      "buildTimeTicks": 135,
+      "sightRange": 8,
+      "weapon": {
+        "damage": 9,
+        "range": 5,
+        "cooldownTicks": 14
+      }
+    },
+    {
+      "id": "bombard",
+      "tier": 1,
+      "producedBy": "crucible",
+      "requires": [],
+      "maxHp": 60,
+      "speed": 0.125,
+      "mineralCost": 110,
+      "supplyCost": 3,
+      "buildTimeTicks": 160,
+      "sightRange": 9,
+      "weapon": {
+        "damage": 12,
+        "range": 7,
+        "cooldownTicks": 20
+      }
+    },
+    {
+      "id": "furnace",
+      "tier": 2,
+      "producedBy": "crucible",
+      "requires": [
+        "forge"
+      ],
+      "maxHp": 240,
+      "speed": 0.125,
+      "mineralCost": 230,
+      "supplyCost": 4,
+      "buildTimeTicks": 260,
+      "sightRange": 7,
+      "weapon": {
+        "damage": 26,
+        "range": 6,
+        "cooldownTicks": 22
+      }
+    }
+  ],
+  "buildings": [
+    {
+      "id": "forge",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 420,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 120,
+      "buildTimeTicks": 160,
+      "supplyProvided": 8,
+      "isDepot": true,
+      "canTrain": true,
+      "sightRange": 9
+    },
+    {
+      "id": "crucible",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 340,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 140,
+      "buildTimeTicks": 170,
+      "canTrain": true,
+      "sightRange": 8
+    },
+    {
+      "id": "vent",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 150,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 80,
+      "buildTimeTicks": 90,
+      "supplyProvided": 8,
+      "sightRange": 5
+    },
+    {
+      "id": "battery",
+      "tier": 1,
+      "requires": [
+        "forge"
+      ],
+      "maxHp": 240,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 130,
+      "buildTimeTicks": 150,
+      "sightRange": 9,
+      "weapon": {
+        "damage": 12,
+        "range": 6,
+        "cooldownTicks": 10
+      }
+    }
+  ],
+  "upgrades": [],
+  "mechanic": {
+    "kind": "Splash",
+    "maxShield": 0,
+    "regenPerTick": 0,
+    "regenDelayTicks": 0
+  }
+}
