@@ -39,28 +39,30 @@ public partial class UnitView : Node2D
         _hp = _maxHp = u.Hp;
         _fallbackColor = PlayerColors[u.OwnerId % PlayerColors.Length];   // wrap, never crash the match build
 
-        // Prefer per-def static faction art so pack-authored units look like their faction;
-        // else the reference animation sheet (by stat heuristic); else a colored silhouette.
-        // Mirrors BuildingView's def-id texture lookup.
-        var staticPath = $"res://assets/units/{u.DefId}.png";
-        if (ResourceLoader.Exists(staticPath))
+        // Render priority:
+        //  1) a real 6×10 animation sheet at assets/units/<defId>.png  → animate (Vanguard fabber/...)
+        //  2) a single-frame static sprite at that same path           → static (pack faction art)
+        //  3) the reference sheet by stat-heuristic key                → animate (legacy / artless packs)
+        //  4) a colored silhouette                                     → _Draw fallback
+        // SheetAnimator.Load validates the grid, so a static PNG at the def path returns null at (1).
+        var defPath = $"res://assets/units/{u.DefId}.png";
+        var frames = SheetAnimator.Load(u.DefId);
+        if (frames is null && !ResourceLoader.Exists(defPath))
+            frames = SheetAnimator.Load(unitKey); // no own art → fall back to the stat-class sheet
+        if (frames is not null)
         {
-            var tex = ResourceLoader.Load<Texture2D>(staticPath);
+            _sprite = new AnimatedSprite2D { SpriteFrames = frames, Centered = true };
+            _sprite.AnimationFinished += () => _attacking = false;
+            AddChild(_sprite);
+            _sprite.Play("idle-S");
+        }
+        else if (ResourceLoader.Exists(defPath)) // file exists but isn't a sheet → static single-frame
+        {
+            var tex = ResourceLoader.Load<Texture2D>(defPath);
             const float targetH = 46f;
             float s = targetH / tex.GetHeight();
             _staticSprite = new Sprite2D { Texture = tex, Centered = true, Scale = new Vector2(s, s) };
             AddChild(_staticSprite);
-        }
-        else
-        {
-            var frames = SheetAnimator.Load(unitKey);
-            if (frames is not null)
-            {
-                _sprite = new AnimatedSprite2D { SpriteFrames = frames, Centered = true };
-                _sprite.AnimationFinished += () => _attacking = false;
-                AddChild(_sprite);
-                _sprite.Play("idle-S");
-            }
         }
         _prevPos = _currPos = RenderMath.ToPx(u.Position);
         Position = _currPos;

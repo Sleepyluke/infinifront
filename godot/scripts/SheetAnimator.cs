@@ -21,6 +21,12 @@ public static class SheetAnimator
         var path = $"res://assets/units/{unitKey}.png";
         if (!ResourceLoader.Exists(path)) return null; // fallback: caller draws silhouette
         var tex = GD.Load<Texture2D>(path);
+        // Only treat this as an animation SHEET if it matches the 6-col × 10-row, 64px grid.
+        // A single-frame static sprite (e.g. a pack faction's ~256×230 art) is NOT a sheet, so
+        // return null and let the caller render it as a plain static Sprite2D instead of slicing
+        // it into garbage 64px cells. (This guards the def-id collision: reference units fabber/
+        // trooper/outrider/tank ARE 384×640 sheets; pack units are not.)
+        if (tex.GetWidth() < 6 * Cell || tex.GetHeight() < 10 * Cell) return null;
         var frames = new SpriteFrames();
         // Remove the default animation that SpriteFrames ships with so Play() calls
         // never accidentally target it.
