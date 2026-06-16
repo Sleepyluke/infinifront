@@ -8,8 +8,15 @@ public partial class MapView : Node2D
     private SimRunner _runner = null!;
     private MapGrid? _lastMap;
     private int _drawnVersion = -1;
+    private Texture2D? _ground;
 
-    public void Init(SimRunner runner) => _runner = runner;
+    public void Init(SimRunner runner)
+    {
+        _runner = runner;
+        TextureRepeat = CanvasItem.TextureRepeatEnum.Enabled;   // so DrawTextureRect(tile:true) repeats
+        const string g = "res://assets/world/ground.png";
+        if (ResourceLoader.Exists(g)) _ground = ResourceLoader.Load<Texture2D>(g);
+    }
 
     public override void _Process(double delta)
     {
@@ -27,7 +34,9 @@ public partial class MapView : Node2D
         var world = _runner.World;
         var map = world.Map;
         const int px = RenderMath.CellPx;
-        DrawRect(new Rect2(0, 0, map.Width * px, map.Height * px), new Color(0.42f, 0.38f, 0.32f));
+        var full = new Rect2(0, 0, map.Width * px, map.Height * px);
+        if (_ground is not null) DrawTextureRect(_ground, full, tile: true);
+        else DrawRect(full, new Color(0.42f, 0.38f, 0.32f));
 
         // Cells covered by a building or resource node have their own sprite — don't paint rock under them
         // (building footprints + node cells are marked impassable for pathing, same as terrain).
