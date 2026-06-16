@@ -133,7 +133,7 @@ public partial class Hud : CanvasLayer
             {
                 var capturedDef = bdef; // capture for lambda
                 AddButton($"Build {capturedDef.Id} ({capturedDef.Spec.MineralCost})",
-                    () => _cmd.ArmBuildGhost(capturedDef));
+                    () => _cmd.ArmBuildGhost(capturedDef), BuildingTip(capturedDef));
             }
         }
 
@@ -145,7 +145,7 @@ public partial class Hud : CanvasLayer
             {
                 var capturedUdef = udef; // capture for lambda
                 AddButton($"{capturedUdef.Id} ({capturedUdef.Spec.MineralCost})",
-                    () => _runner.Enqueue(new TrainCommand(p, b.Id, capturedUdef.Id)));
+                    () => _runner.Enqueue(new TrainCommand(p, b.Id, capturedUdef.Id)), UnitTip(capturedUdef));
             }
         }
 
@@ -185,11 +185,33 @@ public partial class Hud : CanvasLayer
         _lastButtonKey = (workerSel, _sel.SelectedBuilding, canTrain, commonStance);
     }
 
-    private void AddButton(string text, System.Action onPress)
+    private void AddButton(string text, System.Action onPress, string tooltip = "")
     {
         var btn = new Button { Text = text };
         btn.FocusMode = Control.FocusModeEnum.None;
+        if (tooltip.Length > 0) btn.TooltipText = tooltip;
         btn.Pressed += onPress;
         _buttons.AddChild(btn);
+    }
+
+    // Hover tooltips: surface the catalog stats so players can compare units/buildings.
+    private static string BuildingTip(BuildingDef d)
+    {
+        var s = d.Spec;
+        var parts = new System.Collections.Generic.List<string> { $"Cost {s.MineralCost}", $"HP {s.MaxHp}", $"{s.Width}x{s.Height}" };
+        if (s.SupplyProvided > 0) parts.Add($"+{s.SupplyProvided} supply");
+        if (s.IsDepot) parts.Add("HQ");
+        if (s.CanTrain) parts.Add("trains units");
+        if (s.Weapon is { } w) parts.Add($"dmg {w.Damage}/rng {w.Range.ToInt()}");
+        return $"{d.Id}\n" + string.Join("  ·  ", parts);
+    }
+
+    private static string UnitTip(UnitDef d)
+    {
+        var s = d.Spec;
+        var parts = new System.Collections.Generic.List<string> { $"Cost {s.MineralCost}", $"{s.SupplyCost} supply", $"HP {s.MaxHp}" };
+        if (s.Weapon is { } w) parts.Add($"dmg {w.Damage}/rng {w.Range.ToInt()}/cd {w.CooldownTicks}");
+        if (s.Harvester is not null) parts.Add("harvester");
+        return $"{d.Id}\n" + string.Join("  ·  ", parts);
     }
 }

@@ -144,7 +144,7 @@ public partial class LobbyScreen : CanvasLayer
             bool canEditFaction = (_isHost && (s.Kind == SlotKind.Cpu || s.OccupantPeerId == 1)) || mine;
             if (canEditFaction)
             {
-                var opt = new OptionButton();
+                var opt = new OptionButton { TooltipText = FactionInfo.BlurbFor(s.FactionId) };
                 for (int f = 0; f < _factions.Count; f++) opt.AddItem(_factions[f].Name, f);
                 int sel = FactionIndex(s.FactionId); opt.Selected = sel < 0 ? 0 : sel;
                 int slotIdx = i;
@@ -156,7 +156,7 @@ public partial class LobbyScreen : CanvasLayer
                 };
                 row.AddChild(opt);
             }
-            else row.AddChild(new Label { Text = FactionName(s.FactionId) });
+            else row.AddChild(new Label { Text = FactionName(s.FactionId), TooltipText = FactionInfo.BlurbFor(s.FactionId) });
 
             if (_isHost && s.Kind == SlotKind.Cpu)
             {
