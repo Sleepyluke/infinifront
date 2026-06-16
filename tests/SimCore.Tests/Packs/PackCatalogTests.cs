@@ -50,4 +50,50 @@ public class PackCatalogTests
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
+
+    [Fact]
+    public void ResolvePacksDir_Finds_Packs_In_An_Ancestor()
+    {
+        // Mimic the runtime: start deep inside a fake bin output dir; packs/ lives at the "repo root".
+        var root = Path.Combine(Path.GetTempPath(), "resolve-" + System.Guid.NewGuid().ToString("N"));
+        var deep = Path.Combine(root, "godot", ".godot", "mono", "temp", "bin", "Debug");
+        Directory.CreateDirectory(deep);
+        Directory.CreateDirectory(Path.Combine(root, "packs"));
+        try
+        {
+            var found = PackCatalog.ResolvePacksDir(deep);
+            Assert.Equal(Path.Combine(root, "packs"), found);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void ResolvePacksDir_Finds_Packs_Directly_In_Start_Dir()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "resolve-" + System.Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(root, "packs"));
+        try
+        {
+            Assert.Equal(Path.Combine(root, "packs"), PackCatalog.ResolvePacksDir(root));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void ResolvePacksDir_Without_A_Packs_Dir_Does_Not_Find_The_Test_Tree()
+    {
+        // Walk-up eventually reaches the drive root, so we can't assert a hard null without
+        // assuming the machine has no stray packs/ anywhere above temp. Instead assert the
+        // resolver never points *into our isolated tree* when it contains no packs/ dir.
+        var root = Path.Combine(Path.GetTempPath(), "resolve-" + System.Guid.NewGuid().ToString("N"));
+        var deep = Path.Combine(root, "a", "b");
+        Directory.CreateDirectory(deep);
+        try
+        {
+            var found = PackCatalog.ResolvePacksDir(deep);
+            Assert.True(found is null || !found.StartsWith(root, System.StringComparison.Ordinal),
+                $"resolver should not find a packs/ inside the packs-free test tree, got '{found}'");
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
 }

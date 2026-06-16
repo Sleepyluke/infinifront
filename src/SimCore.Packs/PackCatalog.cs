@@ -11,6 +11,27 @@ public sealed record FactionEntry(string Name, FactionDef Faction);
 /// Deterministic order; invalid/duplicate-id packs are skipped; never throws.</summary>
 public static class PackCatalog
 {
+    /// <summary>Finds the packs directory by walking up from <paramref name="startDir"/>: returns the
+    /// nearest ancestor (including startDir itself) that contains a "packs" subdirectory, or null if
+    /// none. Lets the Godot runtime locate the repo's packs/ from its binary output dir
+    /// (godot/.godot/mono/temp/bin/Debug/…) — or, in a shipped layout, packs/ sitting beside the exe.</summary>
+    public static string? ResolvePacksDir(string startDir)
+    {
+        var dir = string.IsNullOrEmpty(startDir) ? null : new System.IO.DirectoryInfo(startDir);
+        while (dir is not null)
+        {
+            var candidate = System.IO.Path.Combine(dir.FullName, "packs");
+            if (System.IO.Directory.Exists(candidate)) return candidate;
+            dir = dir.Parent;
+        }
+        return null;
+    }
+
+    /// <summary>Convenience: resolve the packs dir from a runtime start directory (walk-up) and load.
+    /// Falls back to the reference-only list when no packs/ directory is found anywhere above.</summary>
+    public static IReadOnlyList<FactionEntry> LoadAuto(string startDir)
+        => Load(ResolvePacksDir(startDir) ?? "");
+
     public static IReadOnlyList<FactionEntry> Load(string packsDir)
     {
         var list = new List<FactionEntry> { new("Reference", ReferenceFaction.Def) };

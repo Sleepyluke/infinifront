@@ -175,8 +175,11 @@ public partial class Main : Node2D
         return ReferenceFaction.Def;
     }
 
+    // Walk up from the binary output dir to find the repo's packs/ (dev) or packs/ beside the
+    // exe (shipped); fall back to BaseDirectory/packs so PackCatalog.Load just yields Reference.
     private static string PacksDir() =>
-        System.IO.Path.Combine(System.AppContext.BaseDirectory, "packs");
+        PackCatalog.ResolvePacksDir(System.AppContext.BaseDirectory)
+        ?? System.IO.Path.Combine(System.AppContext.BaseDirectory, "packs");
 
     public override void _UnhandledKeyInput(InputEvent e)
     {
