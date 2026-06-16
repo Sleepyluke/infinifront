@@ -1,0 +1,5 @@
+A single standalone video-game asset sprite of a mineral crystal cluster, top-down 3/4 view, classic RTS art style with clean dark outlines and flat cel shading, no blur. Light source upper-left.
+
+The crystal cluster: 5 to 7 glowing translucent crystal shards (cyan to teal) of varying heights jutting up from one small dark rocky base, faint inner glow, a couple of small loose shards on the ground right next to the base.
+
+CRITICAL: this is ONE single isolated object, a game sprite cut-out. The ENTIRE background — all four edges, behind the crystals, above them, everywhere — must be uniform pure flat magenta #FF00FF and NOTHING else. NO cave, NO rock wall, NO cliff, NO ground texture, NO scenery, NO second copy, NO panels or split frames. Just one crystal cluster floating centered on a solid magenta field, with a soft short drop shadow directly beneath it. Single image, one subject only.

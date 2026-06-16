@@ -12,6 +12,8 @@ public partial class BuildingView : Node2D
     private int _ownerId, _maxHp, _hp, _queueCount;
     private float _progress; // 0..1 construction
     private Vector2 _sizePx;
+    private Texture2D? _sprite;                 // per-def building art, else null → box fallback
+    private const float SpriteScale = 1.35f;    // building art overhangs its footprint a little
 
     public int BuildingId { get; private set; }
 
@@ -33,6 +35,8 @@ public partial class BuildingView : Node2D
         _maxHp = b.Spec.MaxHp;
         _sizePx = new Vector2(b.Spec.Width * RenderMath.CellPx, b.Spec.Height * RenderMath.CellPx);
         Position = RenderMath.CellToPx(b.CellX, b.CellY);
+        var path = $"res://assets/buildings/{b.DefId}.png";
+        if (ResourceLoader.Exists(path)) _sprite = ResourceLoader.Load<Texture2D>(path);
         SyncTick(b);
     }
 
@@ -55,16 +59,33 @@ public partial class BuildingView : Node2D
 
     public override void _Draw()
     {
-        var baseColor = UnitView.PlayerColors[_ownerId];
-        // construction: dim body fills bottom-up with progress
-        DrawRect(new Rect2(Vector2.Zero, _sizePx), baseColor with { A = 0.25f });
-        var filledH = _sizePx.Y * _progress;
-        DrawRect(new Rect2(0, _sizePx.Y - filledH, _sizePx.X, filledH), baseColor with { A = 0.85f });
-        DrawRect(new Rect2(Vector2.Zero, _sizePx), Colors.Black, filled: false, width: 2);
+        var team = UnitView.PlayerColors[_ownerId % UnitView.PlayerColors.Length];
 
-        var glyph = _isDepot ? "D" : _canTrain ? "B" : "?";
-        DrawString(ThemeDB.FallbackFont, _sizePx / 2 + new Vector2(-8, 10), glyph,
-            HorizontalAlignment.Center, -1, 28, Colors.White);
+        if (_sprite is not null)
+        {
+            // Team-color ground pad — ownership at a glance (the sprite's red accents are baked).
+            DrawColoredPolygon(Ellipse(new Vector2(_sizePx.X / 2f, _sizePx.Y - 4f),
+                                       _sizePx.X * 0.5f, _sizePx.X * 0.16f, 24), team with { A = 0.30f });
+            float w = _sizePx.X * SpriteScale;
+            float h = w * _sprite.GetHeight() / _sprite.GetWidth();
+            // Bottom-centered over the footprint, allowed to overhang upward like an RTS structure.
+            var rect = new Rect2((_sizePx.X - w) / 2f, _sizePx.Y - h, w, h);
+            DrawTextureRect(_sprite, rect, false, new Color(1, 1, 1, 0.35f + 0.65f * _progress));
+        }
+        else
+        {
+            // construction: dim body fills bottom-up with progress
+            DrawRect(new Rect2(Vector2.Zero, _sizePx), team with { A = 0.25f });
+            var filledH = _sizePx.Y * _progress;
+            DrawRect(new Rect2(0, _sizePx.Y - filledH, _sizePx.X, filledH), team with { A = 0.85f });
+            DrawRect(new Rect2(Vector2.Zero, _sizePx), Colors.Black, filled: false, width: 2);
+            var glyph = _isDepot ? "D" : _canTrain ? "B" : "?";
+            DrawString(ThemeDB.FallbackFont, _sizePx / 2 + new Vector2(-8, 10), glyph,
+                HorizontalAlignment.Center, -1, 28, Colors.White);
+        }
+
+        if (Selected)
+            DrawRect(new Rect2(Vector2.Zero, _sizePx), Colors.Lime, filled: false, width: 2);
 
         if (_hp < _maxHp && _hp > 0)
         {
@@ -107,5 +128,16 @@ public partial class BuildingView : Node2D
             }, Colors.Yellow with { A = 0.9f });
             DrawLine(flagPos + new Vector2(0, -14), flagPos, Colors.Yellow with { A = 0.9f }, 1.5f);
         }
+    }
+
+    private static Vector2[] Ellipse(Vector2 c, float rx, float ry, int n)
+    {
+        var p = new Vector2[n];
+        for (int i = 0; i < n; i++)
+        {
+            float t = i * Mathf.Tau / n;
+            p[i] = c + new Vector2(Mathf.Cos(t) * rx, Mathf.Sin(t) * ry);
+        }
+        return p;
     }
 }
