@@ -9,6 +9,7 @@ public sealed class Unit
     public FixVec Position { get; set; }
     public Fix SpeedPerTick { get; set; }
     public int Hp { get; set; }
+    public int MaxHp { get; set; } // full spawn HP; derived static (= spawn Hp), NOT hashed — see StateHasher
 
     public bool HasMoveOrder { get; set; }
     public FixVec MoveTarget { get; set; }

@@ -22,21 +22,30 @@ public sealed partial class SimWorld
         target.TicksSinceDamaged = 0;
     }
 
-    /// <summary>Per-tick faction-mechanic update (regenerating shields), keyed per unit off
-    /// its owner's faction. Units whose owner has no shield mechanic are skipped (zero churn).
-    /// See the TicksSinceDamaged note: ApplyDamage resets to 0 (UpdateCombat, before this),
-    /// UpdateShields transitions 0->1 then increments; regen delay accounts for the +1.</summary>
+    /// <summary>Per-tick faction-mechanic update (regenerating shields OR HP regeneration),
+    /// keyed per unit off its owner's faction. Units whose owner has no mechanic are skipped
+    /// (zero churn). See the TicksSinceDamaged note: ApplyDamage resets to 0 (UpdateCombat,
+    /// before this), UpdateShields transitions 0->1 then increments; regen delay accounts for
+    /// the +1. Both mechanics share RegenPerTick (per-tick recovery) and RegenDelayTicks
+    /// (out-of-combat delay); RegeneratingShields refills ShieldHp toward MaxShield, while
+    /// Regeneration heals Hp toward Unit.MaxHp (MaxShield unused).</summary>
     private void UpdateShields()
     {
         foreach (var u in _units)
         {
-            if (MechanicFor(u) is not { Kind: MechanicKind.RegeneratingShields } m) continue;
-            if (u.TicksSinceDamaged == 0)
-                u.TicksSinceDamaged = 1;
-            else
-                u.TicksSinceDamaged++;
-            if (u.TicksSinceDamaged >= m.RegenDelayTicks && u.ShieldHp < m.MaxShield)
-                u.ShieldHp = System.Math.Min(m.MaxShield, u.ShieldHp + m.RegenPerTick);
+            if (MechanicFor(u) is not { } m || m.Kind == MechanicKind.None) continue;
+            if (u.TicksSinceDamaged == 0) u.TicksSinceDamaged = 1; else u.TicksSinceDamaged++;
+            switch (m.Kind)
+            {
+                case MechanicKind.RegeneratingShields:
+                    if (u.TicksSinceDamaged >= m.RegenDelayTicks && u.ShieldHp < m.MaxShield)
+                        u.ShieldHp = System.Math.Min(m.MaxShield, u.ShieldHp + m.RegenPerTick);
+                    break;
+                case MechanicKind.Regeneration:
+                    if (u.Hp > 0 && u.TicksSinceDamaged >= m.RegenDelayTicks && u.Hp < u.MaxHp)
+                        u.Hp = System.Math.Min(u.MaxHp, u.Hp + m.RegenPerTick);
+                    break;
+            }
         }
     }
 }

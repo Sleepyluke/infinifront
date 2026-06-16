@@ -19,6 +19,7 @@ public static class StateHasher
     /// spec fields; set at placement and never varies during a match).
     /// Unit.DefId and TrainingItem.UnitDefId are excluded: derived static labels, 1:1 with
     /// already-hashed spec fields; set at spawn/queue time and never vary during a match.
+    /// Unit.MaxHp excluded — derived static (= spawn HP), never varies.
     /// Building research slot (ResearchingId + ResearchTicksRemaining) IS hashed (v4, Task 7).
     /// Building.Weapon (Damage/Range/CooldownTicks/CooldownRemaining) IS hashed — folded ONLY
     /// when present (weaponless buildings fold nothing, keeping pre-tower worlds byte-identical).
