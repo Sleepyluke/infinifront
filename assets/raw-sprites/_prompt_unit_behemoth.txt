@@ -1,0 +1,5 @@
+STYLE: match the attached reference creature's exact art style, palette, outline weight and rendering — a FUNGAL BIO-SWARM faction (chitin-brown + bone-grey carapace, sickly bioluminescent TEAL-GREEN glow, fleshy membrane). RTS ¾ top-down view, clean outline, flat cel shading, no blur. Light upper-left. Magenta #FF00FF background only. NO purple or magenta on the creature itself. Faction accent pure red #FF0000 on one tiny marking only.
+
+SUBJECT: a "Behemoth" — a large hulking heavy bio-beast, thick armored chitin carapace plates over a bulky body, heavy clawed limbs, glowing teal vents along its spine. A tier-2 siege creature, massive and powerful (clearly the biggest, bulkiest unit). Oriented facing toward the BOTTOM of the frame.
+
+CRITICAL COMPOSITION: render EXACTLY ONE creature, ONE single view, centered. A single game-unit sprite — NO second copy, NO panels, NO turnaround. One creature on a plain magenta #FF00FF background with a small margin and a soft short drop shadow. Match the reference's style and scale.

@@ -9,7 +9,8 @@ public partial class UnitView : Node2D
     public int OwnerId { get; private set; }
     public bool Selected { get; set; }
 
-    private AnimatedSprite2D? _sprite;     // null → silhouette fallback
+    private AnimatedSprite2D? _sprite;     // animated reference-faction sheet, else null
+    private Sprite2D? _staticSprite;       // per-def faction art (assets/units/<defId>.png), else null
     private SimRunner _runner = null!;
     private Color _fallbackColor;
     private string _facing = "S";
@@ -37,13 +38,29 @@ public partial class UnitView : Node2D
         OwnerId = u.OwnerId;
         _hp = _maxHp = u.Hp;
         _fallbackColor = PlayerColors[u.OwnerId % PlayerColors.Length];   // wrap, never crash the match build
-        var frames = SheetAnimator.Load(unitKey);
-        if (frames is not null)
+
+        // Prefer per-def static faction art so pack-authored units look like their faction;
+        // else the reference animation sheet (by stat heuristic); else a colored silhouette.
+        // Mirrors BuildingView's def-id texture lookup.
+        var staticPath = $"res://assets/units/{u.DefId}.png";
+        if (ResourceLoader.Exists(staticPath))
         {
-            _sprite = new AnimatedSprite2D { SpriteFrames = frames, Centered = true };
-            _sprite.AnimationFinished += () => _attacking = false;
-            AddChild(_sprite);
-            _sprite.Play("idle-S");
+            var tex = ResourceLoader.Load<Texture2D>(staticPath);
+            const float targetH = 46f;
+            float s = targetH / tex.GetHeight();
+            _staticSprite = new Sprite2D { Texture = tex, Centered = true, Scale = new Vector2(s, s) };
+            AddChild(_staticSprite);
+        }
+        else
+        {
+            var frames = SheetAnimator.Load(unitKey);
+            if (frames is not null)
+            {
+                _sprite = new AnimatedSprite2D { SpriteFrames = frames, Centered = true };
+                _sprite.AnimationFinished += () => _attacking = false;
+                AddChild(_sprite);
+                _sprite.Play("idle-S");
+            }
         }
         _prevPos = _currPos = RenderMath.ToPx(u.Position);
         Position = _currPos;
@@ -79,6 +96,7 @@ public partial class UnitView : Node2D
 
     private void PlayAnim(string baseName)
     {
+        if (_staticSprite is not null) { _staticSprite.FlipH = _facing == "E"; return; }
         if (_sprite is null) return;
         var storedFacing = _facing == "E" ? "W" : _facing;
         _sprite.FlipH = _facing == "E";
@@ -107,7 +125,12 @@ public partial class UnitView : Node2D
 
     public override void _Draw()
     {
-        if (_sprite is null)
+        if (_staticSprite is not null)
+        {
+            // Team-color ground pad — ownership at a glance (the sprite renders above as a child node).
+            DrawCircle(new Vector2(0, 16), 14, _fallbackColor with { A = 0.32f });
+        }
+        else if (_sprite is null)
         {
             DrawCircle(Vector2.Zero, 20, _fallbackColor);
         }

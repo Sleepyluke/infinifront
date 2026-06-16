@@ -1,0 +1,5 @@
+STYLE: high-detail game sprite, RTS ¾ top-down view (seen from above at an angle), clean dark outline, flat cel shading, no blur. Light upper-left. Uniform pure magenta #FF00FF background, nothing else. AESTHETIC: FUNGAL BIO-SWARM creature — living chitinous carapace + fleshy membrane with sickly BIOLUMINESCENT TEAL-GREEN glowing parts. Palette: dark chitin-brown and bone-grey with teal-green glow. NO purple or magenta on the creature itself (only the background is magenta). Faction accent pure red #FF0000 on one tiny marking only.
+
+SUBJECT: a "Crawler" — a small fast aggressive bio-bug, low to the ground, sharp mandibles and clawed forelimbs, ridged chitin back with faint teal seams. A cheap melee swarm creature. Oriented facing toward the BOTTOM of the frame (toward the viewer), poised to attack.
+
+CRITICAL COMPOSITION: render EXACTLY ONE creature, ONE single view, centered, filling most of the frame. This is a single game-unit sprite, NOT concept art — NO second copy, NO side-by-side panels, NO multiple angles, NO turnaround sheet. One creature on a plain magenta #FF00FF background with a small magenta margin and a soft short drop shadow.
