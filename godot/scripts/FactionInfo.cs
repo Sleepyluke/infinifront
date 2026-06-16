@@ -12,6 +12,7 @@ public static class FactionInfo
         ["driftborn"] = "The Driftborn — nomad scavengers. Cheap, fast, fragile units and quick-building structures. Hit-and-run raiders that snowball early but fold against static defense.",
         ["mycel"]     = "The Mycel — fungal swarm. The cheapest, most numerous units, and they regenerate health out of combat. Overwhelm with numbers, then pull back wounded units to heal.",
         ["sanguine"]  = "The Sanguine — vampiric predators. Aggressive flesh-and-bone units that heal whenever they land a hit, so they win prolonged brawls. Stay in the fight; they wither if kept out of combat.",
+        ["kiln"]      = "The Kiln — molten-forge artillery. Slow, expensive, durable units whose every attack splashes nearby foes — brutal against clustered armies. Keep your forces spread out against them; harass and out-range to win.",
     };
 
     public static string BlurbFor(string id) =>
