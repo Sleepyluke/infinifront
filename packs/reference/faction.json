@@ -98,6 +98,18 @@
       "buildTimeTicks": 200,
       "canTrain": true,
       "sightRange": 8
+    },
+    {
+      "id": "supply",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 200,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 100,
+      "buildTimeTicks": 120,
+      "supplyProvided": 8,
+      "sightRange": 5
     }
   ],
   "upgrades": []

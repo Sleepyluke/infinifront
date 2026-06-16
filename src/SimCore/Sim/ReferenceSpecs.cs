@@ -37,4 +37,8 @@ public static class ReferenceSpecs
     public static readonly BuildingSpec Barracks = new(
         MaxHp: 350, Width: 2, Height: 2, MineralCost: 150, BuildTimeTicks: 200,
         CanTrain: true, SightRange: 8);
+
+    public static readonly BuildingSpec SupplySilo = new(
+        MaxHp: 200, Width: 2, Height: 2, MineralCost: 100, BuildTimeTicks: 120,
+        SupplyProvided: 8, IsDepot: false, CanTrain: false, SightRange: 5);
 }

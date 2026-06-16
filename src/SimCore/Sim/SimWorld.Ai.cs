@@ -74,8 +74,14 @@ public sealed partial class SimWorld
     {
         var f = FactionFor(p);
         if (f is null) return null;
-        foreach (var b in f.BuildingList) if (b.Spec.SupplyProvided > 0) return b;
-        return null;
+        BuildingDef? fallback = null;
+        foreach (var b in f.BuildingList)
+            if (b.Spec.SupplyProvided > 0)
+            {
+                if (!b.Spec.IsDepot && !b.Spec.CanTrain) return b;  // prefer the cheap supply-only building
+                fallback ??= b;
+            }
+        return fallback;
     }
 
     /// <summary>Id of a complete, train-capable building of p that produces the given def id; 0 if none.</summary>
