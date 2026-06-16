@@ -1,0 +1,151 @@
+{
+  "id": "driftborn",
+  "name": "The Driftborn",
+  "units": [
+    {
+      "id": "picker",
+      "tier": 1,
+      "producedBy": "roost",
+      "requires": [],
+      "maxHp": 35,
+      "speed": 0.3125,
+      "mineralCost": 45,
+      "supplyCost": 1,
+      "buildTimeTicks": 90,
+      "sightRange": 6,
+      "harvester": {
+        "carryCapacity": 5,
+        "gatherTicks": 10
+      }
+    },
+    {
+      "id": "runner",
+      "tier": 1,
+      "producedBy": "garage",
+      "requires": [],
+      "maxHp": 35,
+      "speed": 0.375,
+      "mineralCost": 40,
+      "supplyCost": 1,
+      "buildTimeTicks": 60,
+      "sightRange": 6,
+      "weapon": {
+        "damage": 5,
+        "range": 2,
+        "cooldownTicks": 7
+      }
+    },
+    {
+      "id": "slinger",
+      "tier": 1,
+      "producedBy": "garage",
+      "requires": [],
+      "maxHp": 40,
+      "speed": 0.3125,
+      "mineralCost": 55,
+      "supplyCost": 1,
+      "buildTimeTicks": 75,
+      "sightRange": 8,
+      "weapon": {
+        "damage": 5,
+        "range": 4,
+        "cooldownTicks": 8
+      }
+    },
+    {
+      "id": "buggy",
+      "tier": 1,
+      "producedBy": "garage",
+      "requires": [],
+      "maxHp": 50,
+      "speed": 0.625,
+      "mineralCost": 70,
+      "supplyCost": 2,
+      "buildTimeTicks": 100,
+      "sightRange": 9,
+      "weapon": {
+        "damage": 4,
+        "range": 3,
+        "cooldownTicks": 5
+      }
+    },
+    {
+      "id": "hauler",
+      "tier": 2,
+      "producedBy": "garage",
+      "requires": [
+        "roost"
+      ],
+      "maxHp": 120,
+      "speed": 0.1875,
+      "mineralCost": 130,
+      "supplyCost": 3,
+      "buildTimeTicks": 180,
+      "sightRange": 7,
+      "weapon": {
+        "damage": 18,
+        "range": 5,
+        "cooldownTicks": 18
+      }
+    }
+  ],
+  "buildings": [
+    {
+      "id": "roost",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 320,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 90,
+      "buildTimeTicks": 130,
+      "supplyProvided": 8,
+      "isDepot": true,
+      "canTrain": true,
+      "sightRange": 9
+    },
+    {
+      "id": "garage",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 280,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 110,
+      "buildTimeTicks": 150,
+      "canTrain": true,
+      "sightRange": 8
+    },
+    {
+      "id": "cache",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 160,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 80,
+      "buildTimeTicks": 90,
+      "supplyProvided": 8,
+      "sightRange": 5
+    },
+    {
+      "id": "scrapgun",
+      "tier": 1,
+      "requires": [
+        "roost"
+      ],
+      "maxHp": 200,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 120,
+      "buildTimeTicks": 140,
+      "sightRange": 9,
+      "weapon": {
+        "damage": 10,
+        "range": 6,
+        "cooldownTicks": 9
+      }
+    }
+  ],
+  "upgrades": []
+}
