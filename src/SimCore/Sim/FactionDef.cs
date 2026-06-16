@@ -131,6 +131,6 @@ public sealed record UpgradeDef(
     IReadOnlyList<string> TargetUnitDefIds, UpgradeStat Stat, SimCore.Math.Fix Delta,
     int MineralCost, int ResearchTicks);
 
-public enum MechanicKind { None = 0, RegeneratingShields = 1, Regeneration = 2, Lifesteal = 3 }
+public enum MechanicKind { None = 0, RegeneratingShields = 1, Regeneration = 2, Lifesteal = 3, Splash = 4 }
 
 public sealed record MechanicDef(MechanicKind Kind, int MaxShield, int RegenPerTick, int RegenDelayTicks);

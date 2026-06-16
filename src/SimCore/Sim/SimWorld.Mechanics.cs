@@ -31,6 +31,27 @@ public sealed partial class SimWorld
         attacker.Hp = System.Math.Min(attacker.MaxHp, attacker.Hp + m.RegenPerTick);
     }
 
+    /// <summary>Splash radius (world units) for MechanicKind.Splash. Fixed behavior — no pack field.</summary>
+    private static readonly SimCore.Math.Fix SplashRadius = SimCore.Math.Fix.FromInt(2);
+
+    /// <summary>Splash: a Splash-faction attacker's hit also deals HALF (floor) of the dealt damage to
+    /// every OTHER enemy unit within SplashRadius of the target position. Ally-immune, skips the primary
+    /// target and dead units. No-op for non-Splash factions, so it never touches the golden scenario.
+    /// Deterministic: iterates _units in order, integer math, Fix distance compare — no RNG/floats.</summary>
+    private void ApplySplash(Unit attacker, SimCore.Math.FixVec center, int dealtDamage, int primaryUnitId)
+    {
+        if (MechanicFor(attacker) is not { Kind: MechanicKind.Splash }) return;
+        int splash = dealtDamage / 2;
+        if (splash <= 0) return;
+        foreach (var v in _units)
+        {
+            if (v.Id == primaryUnitId || v.Hp <= 0) continue;
+            if (SameTeam(attacker.OwnerId, v.OwnerId)) continue;   // ally-immune (covers self/same-owner)
+            if ((v.Position - center).LengthSquared() <= SplashRadius * SplashRadius)
+                ApplyDamage(v, splash);
+        }
+    }
+
     /// <summary>Per-tick faction-mechanic update (regenerating shields OR HP regeneration),
     /// keyed per unit off its owner's faction. Units whose owner has no mechanic are skipped
     /// (zero churn). See the TicksSinceDamaged note: ApplyDamage resets to 0 (UpdateCombat,
