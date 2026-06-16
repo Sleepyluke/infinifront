@@ -1,0 +1,157 @@
+{
+  "id": "mycel",
+  "name": "The Mycel",
+  "units": [
+    {
+      "id": "spore",
+      "tier": 1,
+      "producedBy": "hollow",
+      "requires": [],
+      "maxHp": 30,
+      "speed": 0.3125,
+      "mineralCost": 45,
+      "supplyCost": 1,
+      "buildTimeTicks": 85,
+      "sightRange": 6,
+      "harvester": {
+        "carryCapacity": 5,
+        "gatherTicks": 10
+      }
+    },
+    {
+      "id": "crawler",
+      "tier": 1,
+      "producedBy": "pit",
+      "requires": [],
+      "maxHp": 35,
+      "speed": 0.4375,
+      "mineralCost": 40,
+      "supplyCost": 1,
+      "buildTimeTicks": 45,
+      "sightRange": 6,
+      "weapon": {
+        "damage": 5,
+        "range": 1,
+        "cooldownTicks": 7
+      }
+    },
+    {
+      "id": "spitter",
+      "tier": 1,
+      "producedBy": "pit",
+      "requires": [],
+      "maxHp": 30,
+      "speed": 0.3125,
+      "mineralCost": 50,
+      "supplyCost": 1,
+      "buildTimeTicks": 65,
+      "sightRange": 8,
+      "weapon": {
+        "damage": 5,
+        "range": 4,
+        "cooldownTicks": 8
+      }
+    },
+    {
+      "id": "brood",
+      "tier": 1,
+      "producedBy": "pit",
+      "requires": [],
+      "maxHp": 45,
+      "speed": 0.5625,
+      "mineralCost": 65,
+      "supplyCost": 2,
+      "buildTimeTicks": 90,
+      "sightRange": 9,
+      "weapon": {
+        "damage": 5,
+        "range": 2,
+        "cooldownTicks": 6
+      }
+    },
+    {
+      "id": "behemoth",
+      "tier": 2,
+      "producedBy": "pit",
+      "requires": [
+        "hollow"
+      ],
+      "maxHp": 160,
+      "speed": 0.1875,
+      "mineralCost": 150,
+      "supplyCost": 4,
+      "buildTimeTicks": 200,
+      "sightRange": 7,
+      "weapon": {
+        "damage": 20,
+        "range": 5,
+        "cooldownTicks": 18
+      }
+    }
+  ],
+  "buildings": [
+    {
+      "id": "hollow",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 350,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 100,
+      "buildTimeTicks": 130,
+      "supplyProvided": 8,
+      "isDepot": true,
+      "canTrain": true,
+      "sightRange": 9
+    },
+    {
+      "id": "pit",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 260,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 110,
+      "buildTimeTicks": 150,
+      "canTrain": true,
+      "sightRange": 8
+    },
+    {
+      "id": "bladder",
+      "tier": 1,
+      "requires": [],
+      "maxHp": 140,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 75,
+      "buildTimeTicks": 85,
+      "supplyProvided": 8,
+      "sightRange": 5
+    },
+    {
+      "id": "barb",
+      "tier": 1,
+      "requires": [
+        "hollow"
+      ],
+      "maxHp": 180,
+      "width": 2,
+      "height": 2,
+      "mineralCost": 110,
+      "buildTimeTicks": 130,
+      "sightRange": 9,
+      "weapon": {
+        "damage": 9,
+        "range": 6,
+        "cooldownTicks": 9
+      }
+    }
+  ],
+  "upgrades": [],
+  "mechanic": {
+    "kind": "Regeneration",
+    "maxShield": 0,
+    "regenPerTick": 1,
+    "regenDelayTicks": 90
+  }
+}
