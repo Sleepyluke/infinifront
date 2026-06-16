@@ -30,7 +30,7 @@ public sealed partial class SimWorld
 
     internal int PlaceBuilding(int ownerId, BuildingSpec spec, int cellX, int cellY, string defId = "")
     {
-        var b = new Building { Id = _nextId++, OwnerId = ownerId, CellX = cellX, CellY = cellY, DefId = defId, Spec = spec, Hp = spec.MaxHp };
+        var b = new Building { Id = _nextId++, OwnerId = ownerId, CellX = cellX, CellY = cellY, DefId = defId, Spec = spec, Hp = spec.MaxHp, Weapon = spec.Weapon?.Instantiate() };
         _buildings.Add(b);
         _buildingsById[b.Id] = b;
         for (int y = cellY; y < cellY + spec.Height; y++)

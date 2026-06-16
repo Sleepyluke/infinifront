@@ -18,4 +18,5 @@ public sealed record UnitSpec(
 
 public sealed record BuildingSpec(
     int MaxHp, int Width, int Height, int MineralCost, int BuildTimeTicks,
-    int SupplyProvided = 0, bool IsDepot = false, bool CanTrain = false, int SightRange = 8);
+    int SupplyProvided = 0, bool IsDepot = false, bool CanTrain = false, int SightRange = 8,
+    WeaponSpec? Weapon = null);

@@ -46,12 +46,15 @@ public static class PackMapper
     private static BuildingDto ToDto(BuildingDef b) => new(
         b.Id, b.Tier, b.Requires.ToList(),
         b.Spec.MaxHp, b.Spec.Width, b.Spec.Height, b.Spec.MineralCost, b.Spec.BuildTimeTicks,
-        b.Spec.SupplyProvided, b.Spec.IsDepot, b.Spec.CanTrain, b.Spec.SightRange);
+        b.Spec.SupplyProvided, b.Spec.IsDepot, b.Spec.CanTrain, b.Spec.SightRange,
+        b.Spec.Weapon is null ? null
+            : new WeaponDto(b.Spec.Weapon.Damage, b.Spec.Weapon.Range, b.Spec.Weapon.CooldownTicks));
 
     private static BuildingDef ToBuildingDef(BuildingDto d) => new(
         d.Id, d.Tier, (d.Requires ?? NoStrings).ToList(),
         new BuildingSpec(d.MaxHp, d.Width, d.Height, d.MineralCost, d.BuildTimeTicks,
-            d.SupplyProvided, d.IsDepot, d.CanTrain, d.SightRange));
+            d.SupplyProvided, d.IsDepot, d.CanTrain, d.SightRange,
+            d.Weapon is null ? null : new WeaponSpec(d.Weapon.Damage, d.Weapon.Range, d.Weapon.CooldownTicks)));
 
     // --- upgrades ---
     private static UpgradeDto ToDto(UpgradeDef g) => new(

@@ -1,0 +1,3 @@
+A seamless tileable texture for a video-game ground/terrain. Top-down orthographic view, sci-fi military ground: weathered cracked rockcrete and packed dirt with subtle straight panel seams, scattered small gravel and grit, faint scorch marks, muted desaturated browns and grays.
+
+CRITICAL: the texture MUST be perfectly seamlessly tileable — the left edge continues into the right edge and the top edge into the bottom edge with NO visible seam. NO border, NO frame, NO vignette, NO drop shadow, NO single directional light gradient (flat uniform lighting), NO distinct focal object or centerpiece — detail evenly and continuously distributed across the whole image so it can be repeated in a grid. Flat top-down, fills the entire frame, 1024x1024.

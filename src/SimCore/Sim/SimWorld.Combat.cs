@@ -234,30 +234,53 @@ public sealed partial class SimWorld
     /// <summary>Nearest living enemy within range; ties broken by spawn order (stable list iteration,
     /// strict less-than keeps the earliest). Units strictly preferred over buildings. Deterministic.
     /// When FogEnabled, skips enemies in cells not visible to the acquiring unit's owner.</summary>
-    private int AcquireTarget(Unit u, Fix acquireRange)
+    private int AcquireTarget(Unit u, Fix acquireRange) => AcquireTargetAt(u.Position, u.OwnerId, acquireRange);
+
+    /// <summary>Nearest living enemy (units preferred, then buildings) within range of `from`,
+    /// owned by a different TEAM than `ownerId`, visible to that owner. Deterministic (stable
+    /// list iteration, strict-less-than tie-break). Shared by unit and building acquisition.</summary>
+    private int AcquireTargetAt(FixVec from, int ownerId, Fix acquireRange)
     {
         var rangeSq = acquireRange * acquireRange;
         int best = 0;
         Fix bestDist = default;
         foreach (var e in _units)
         {
-            if (SameTeam(e.OwnerId, u.OwnerId) || e.Hp <= 0) continue;
+            if (SameTeam(e.OwnerId, ownerId) || e.Hp <= 0) continue;
             var (ecx, ecy) = Map.WorldToCell(e.Position);
-            if (!IsVisibleTo(u.OwnerId, ecx, ecy)) continue;
-            var d = (e.Position - u.Position).LengthSquared();
+            if (!IsVisibleTo(ownerId, ecx, ecy)) continue;
+            var d = (e.Position - from).LengthSquared();
             if (d > rangeSq) continue;
             if (best == 0 || d < bestDist) { best = e.Id; bestDist = d; }
         }
         if (best != 0) return best;
         foreach (var b in _buildings)
         {
-            if (SameTeam(b.OwnerId, u.OwnerId) || b.Hp <= 0) continue;
+            if (SameTeam(b.OwnerId, ownerId) || b.Hp <= 0) continue;
             var bc = Map.WorldToCell(CenterOf(b));
-            if (!IsVisibleTo(u.OwnerId, bc.Item1, bc.Item2)) continue;
-            var d = (CenterOf(b) - u.Position).LengthSquared();
+            if (!IsVisibleTo(ownerId, bc.Item1, bc.Item2)) continue;
+            var d = (CenterOf(b) - from).LengthSquared();
             if (d > rangeSq) continue;
             if (best == 0 || d < bestDist) { best = b.Id; bestDist = d; }
         }
         return best;
+    }
+
+    /// <summary>Static building defense: each complete, alive, WEAPONED building fires at the
+    /// nearest enemy in range on cooldown. No-op for weaponless buildings (all but towers), so the
+    /// towerless golden scenario is byte-identical. Deterministic (stable _buildings order).</summary>
+    private void UpdateBuildingCombat()
+    {
+        foreach (var b in _buildings)
+        {
+            if (b.Weapon is not { } w || !b.IsComplete || b.Hp <= 0) continue;
+            if (w.CooldownRemaining > 0) { w.CooldownRemaining--; continue; }
+            int targetId = AcquireTargetAt(CenterOf(b), b.OwnerId, w.Range);
+            if (targetId == 0) continue;
+            if (!TryResolveTarget(targetId, out _, out var tu, out var tb)) continue;
+            if (tu is not null) ApplyDamage(tu, w.Damage);
+            else tb!.Hp -= w.Damage;
+            w.CooldownRemaining = w.CooldownTicks;
+        }
     }
 }
