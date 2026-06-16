@@ -48,6 +48,16 @@ Very cheap, numerous, fragile, and **regenerate HP when out of combat** (signatu
 
 (Reprioritize each cycle by value × verifiability. New ideas append here.)
 
+### ✅ ROADMAP v1 COMPLETE (R1–R10 + R8b + R-ART all shipped, 2026-06-16)
+5 distinct, balanced, fully-arted factions (Vanguard/Concord/Driftborn/Mycel/Sanguine) · 3 mechanics (shields/regen/lifesteal) · packs selectable in-game · menu blurbs · balance doc. Golden `1571756151672809223UL` untouched the entire run.
+
+### Extended backlog v2 (prioritized; keep the same rails — golden-safe/verifiable/foreground/push-each)
+- [ ] **E1 — Lobby faction descriptions** — port the MenuScreen `FactionBlurbs` to `LobbyScreen` (multiplayer faction pick) for UI parity. Tiny, compile-checked, render-only. Quick win.
+- [ ] **E2 — Build-button tooltips** — show unit/building stats (cost / hp / dmg / range) on hover in the in-game build menu (catalog-driven). Compile-checked Godot, render-only.
+- [ ] **E3 — 6th faction + a NEW mechanic** (headline): dream up a non-SC faction whose signature is a new golden-safe `MechanicKind` (candidates: Splash/AoE on-hit, Thorns/reflect, Spawn-on-death, Cloak). Keystone pattern (no-op for golden, hash new state only-when-present, or reuse existing hashed fields). TDD + gate, then pack + tests + art. Most aligned with "dream up cool factions + mechanics."
+- [ ] **E4 — Price mechanics in PackValidator** (R9 follow-up): make `UnitPower` value regen/lifesteal so future packs with them are budget-checked; re-tune mycel/sanguine to stay in-band. Verifiable but needs care (changes existing packs' efficiency) — do deliberately with the validator + full gate.
+- [ ] **E5 — M4 multiplayer robustness** (from the M-arc backlog): desync-halt UI surfacing DesyncTick; anti-cheat frame.PlayerId==peer-slot validation at ReceiveFrameRpc; bounded `_hashes` sliding window; cross-machine pack-hash handshake. Several are headless-testable.
+
 ---
 
 ## LOG (most recent last)
