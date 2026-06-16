@@ -1,0 +1,5 @@
+STYLE: match the attached reference creature's exact art style, palette, outline weight and rendering — a VAMPIRIC PREDATOR faction of living flesh and bone (warm crimson-red muscle + bone-white claws/fangs, glowing red eyes). Visceral, predatory. Use ONLY warm blood-red, bone-white/ivory, dark sinew-brown — NO purple, NO violet, NO magenta, NO pink, NO cool/bluish red on the creature. RTS ¾ top-down, clean outline, flat cel shading, no blur. Light upper-left. Magenta #FF00FF background only. Faction accent: one glowing pure-red #FF0000 marking.
+
+SUBJECT: a "Leech" worker drone — a small crimson parasite the size of a large slug-beast, a round sucker-mouth, stubby grasping limbs, a translucent red blood-sac on its back (it drains resources). Small and harmless-looking. Oriented facing toward the BOTTOM of the frame.
+
+CRITICAL COMPOSITION: render EXACTLY ONE creature, ONE single view, centered. A single game-unit sprite — NO second copy, NO panels, NO turnaround. One creature on a plain magenta #FF00FF background with a small margin and a soft short drop shadow. Match the reference's style and scale.
