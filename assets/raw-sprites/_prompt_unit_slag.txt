@@ -1,0 +1,5 @@
+STYLE: match the attached reference unit's exact art style, palette, outline weight and rendering — a MOLTEN-FORGE faction of forged blackened cast-iron war-constructs veined with glowing molten LAVA (orange-amber-yellow) seams + a glowing core. Heavy/hot/volcanic, NOT scrappy/rusty/organic/sleek-white. Use ONLY blackened dark-iron/charcoal-gray and glowing molten orange-amber-yellow — NO purple, NO magenta, NO blue, NO cool tones. RTS ¾ top-down, clean outline, flat cel shading, no blur. Light upper-left. Magenta #FF00FF background only. Faction accent: one small pure-red #FF0000 marking.
+
+SUBJECT: a "Slag" — a bigger, heavier forged iron war-golem than the Ember, hauling a thick molten siege-cannon in both arms, more massive armored plating, brighter lava seams. A heavy splash attacker. Oriented facing toward the BOTTOM of the frame.
+
+CRITICAL COMPOSITION: render EXACTLY ONE construct, ONE single view, centered. A single game-unit sprite — NO second copy, NO panels, NO turnaround. One unit on a plain magenta #FF00FF background with a small margin and a soft short drop shadow. Match the reference's style and scale.
