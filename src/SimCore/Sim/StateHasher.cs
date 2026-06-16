@@ -20,6 +20,8 @@ public static class StateHasher
     /// Unit.DefId and TrainingItem.UnitDefId are excluded: derived static labels, 1:1 with
     /// already-hashed spec fields; set at spawn/queue time and never vary during a match.
     /// Building research slot (ResearchingId + ResearchTicksRemaining) IS hashed (v4, Task 7).
+    /// Building.Weapon (Damage/Range/CooldownTicks/CooldownRemaining) IS hashed — folded ONLY
+    /// when present (weaponless buildings fold nothing, keeping pre-tower worlds byte-identical).
     /// PlayerState.AppliedUpgrades IS hashed (v4, Task 7) — list is kept sorted (Ordinal) so
     /// iteration order is deterministic regardless of research-completion order.
     /// Unit shield state (ShieldHp + TicksSinceDamaged) IS hashed (v5, Task 5) — folded at
@@ -118,6 +120,16 @@ public static class StateHasher
             h = Mix(h, (ulong)b.Spec.SupplyProvided);
             h = Mix(h, b.Spec.IsDepot ? 1UL : 0UL);
             h = Mix(h, b.Spec.CanTrain ? 1UL : 0UL);
+            // Weapon folded ONLY when present — weaponless buildings fold nothing new, keeping
+            // pre-tower (towerless) worlds byte-identical (golden-safe). NO else, NO null marker.
+            if (b.Weapon is { } bw)
+            {
+                h = Mix(h, 1UL);
+                h = Mix(h, (ulong)bw.Damage);
+                h = Mix(h, (ulong)bw.Range.Raw);
+                h = Mix(h, (ulong)bw.CooldownTicks);
+                h = Mix(h, (ulong)bw.CooldownRemaining);
+            }
             h = Mix(h, (ulong)b.Queue.Count);
             foreach (var item in b.Queue)
             {

@@ -21,5 +21,6 @@ public static class ReferenceFaction
             new BuildingDef("depot",    1, None, ReferenceSpecs.Depot),
             new BuildingDef("barracks", 1, None, ReferenceSpecs.Barracks),
             new BuildingDef("supply",   1, None, ReferenceSpecs.SupplySilo),
+            new BuildingDef("tower",    1, new[] { "depot" }, ReferenceSpecs.SentryTurret),
         });
 }

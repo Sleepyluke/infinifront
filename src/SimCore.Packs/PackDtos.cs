@@ -32,7 +32,8 @@ public sealed record BuildingDto(
     int MaxHp, int Width, int Height, int MineralCost, int BuildTimeTicks,
     int SupplyProvided = 0, bool IsDepot = false, bool CanTrain = false,
     // Always write SightRange even when 0 (ctor default is 8); see UnitDto.SightRange.
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int SightRange = 8);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int SightRange = 8,
+    WeaponDto? Weapon = null);
 
 public sealed record UpgradeDto(
     string Id, int Tier, string ResearchedAt, IReadOnlyList<string>? Requires,

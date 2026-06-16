@@ -41,4 +41,9 @@ public static class ReferenceSpecs
     public static readonly BuildingSpec SupplySilo = new(
         MaxHp: 200, Width: 2, Height: 2, MineralCost: 100, BuildTimeTicks: 120,
         SupplyProvided: 8, IsDepot: false, CanTrain: false, SightRange: 5);
+
+    public static readonly BuildingSpec SentryTurret = new(
+        MaxHp: 250, Width: 2, Height: 2, MineralCost: 150, BuildTimeTicks: 180,
+        SupplyProvided: 0, IsDepot: false, CanTrain: false, SightRange: 9,
+        Weapon: new WeaponSpec(Damage: 12, Range: Fix.FromInt(6), CooldownTicks: 8));
 }
