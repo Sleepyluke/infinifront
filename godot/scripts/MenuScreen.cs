@@ -24,6 +24,7 @@ public partial class MenuScreen : CanvasLayer
         ["concord"]   = "The Concord — synthetic energy. Few, expensive, durable units shielded by regenerating energy; every loss stings, so disengage to recharge. Quality over quantity.",
         ["driftborn"] = "The Driftborn — nomad scavengers. Cheap, fast, fragile units and quick-building structures. Hit-and-run raiders that snowball early but fold against static defense.",
         ["mycel"]     = "The Mycel — fungal swarm. The cheapest, most numerous units, and they regenerate health out of combat. Overwhelm with numbers, then pull back wounded units to heal.",
+        ["sanguine"]  = "The Sanguine — vampiric predators. Aggressive flesh-and-bone units that heal whenever they land a hit, so they win prolonged brawls. Stay in the fight; they wither if kept out of combat.",
     };
 
     private static string BlurbFor(string id) =>
