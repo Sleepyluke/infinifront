@@ -1,0 +1,5 @@
+STYLE: match the attached reference unit's exact art style, palette, outline weight and rendering — a SLEEK SYNTHETIC / ENERGY faction (smooth white-and-silver panels, glowing cyan-blue energy cores, crystalline high-tech). Clean and advanced, NOT industrial/rusty/organic. Use ONLY white/silver/pale-grey, glowing cyan-blue, and a small red accent — NO purple, NO violet, NO magenta, NO pink on the unit. RTS ¾ top-down, clean outline, flat cel shading, no blur. Light upper-left. Magenta #FF00FF background only. Faction accent: one small pure-red #FF0000 trim.
+
+SUBJECT: a "Lumen" worker drone — a small sleek hovering synthetic assembler: a smooth white-and-silver rounded drone body with a glowing cyan energy core underneath and small manipulator arms (it gathers resources). Small, clean, non-combatant. Oriented facing toward the BOTTOM of the frame.
+
+CRITICAL COMPOSITION: render EXACTLY ONE drone, ONE single view, centered. A single game-unit sprite — NO second copy, NO panels, NO turnaround. One unit on a plain magenta #FF00FF background with a small margin and a soft short drop shadow. Match the reference's style and scale.
