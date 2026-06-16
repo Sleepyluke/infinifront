@@ -14,6 +14,20 @@ public partial class MenuScreen : CanvasLayer
     private AiDifficulty _difficulty = AiDifficulty.Easy;
     private OptionButton _humanPick = null!, _cpuPick = null!;
     private Label _diffLabel = null!;
+    private Label _humanDesc = null!;
+
+    /// <summary>Identity + playstyle blurbs shown under the faction picker (render-only).
+    /// Keyed by FactionDef.Id; unknown packs get a generic line.</summary>
+    private static readonly Dictionary<string, string> FactionBlurbs = new()
+    {
+        ["reference"] = "Vanguard — balanced human military. A dependable all-rounder with no special mechanic: solid infantry, tanks, and turrets. Forgiving to learn and strong in every matchup.",
+        ["concord"]   = "The Concord — synthetic energy. Few, expensive, durable units shielded by regenerating energy; every loss stings, so disengage to recharge. Quality over quantity.",
+        ["driftborn"] = "The Driftborn — nomad scavengers. Cheap, fast, fragile units and quick-building structures. Hit-and-run raiders that snowball early but fold against static defense.",
+        ["mycel"]     = "The Mycel — fungal swarm. The cheapest, most numerous units, and they regenerate health out of combat. Overwhelm with numbers, then pull back wounded units to heal.",
+    };
+
+    private static string BlurbFor(string id) =>
+        FactionBlurbs.TryGetValue(id, out var b) ? b : "A custom faction.";
 
     public override void _Ready()
     {
@@ -29,8 +43,16 @@ public partial class MenuScreen : CanvasLayer
         box.AddChild(new Label { Text = "LlmRts — New Match", HorizontalAlignment = HorizontalAlignment.Center });
 
         box.AddChild(new Label { Text = "Your faction:" });
-        _humanPick = MakeFactionPicker(i => _human = i);
+        _humanPick = MakeFactionPicker(i => { _human = i; UpdateDesc(); });
         box.AddChild(_humanPick);
+        _humanDesc = new Label
+        {
+            AutowrapMode = TextServer.AutowrapMode.Word,
+            CustomMinimumSize = new Vector2(320, 0),
+            Modulate = new Color(0.82f, 0.86f, 0.92f),
+        };
+        box.AddChild(_humanDesc);
+        UpdateDesc();
 
         box.AddChild(new Label { Text = "CPU faction:" });
         _cpuPick = MakeFactionPicker(i => _cpu = i);
@@ -75,6 +97,11 @@ public partial class MenuScreen : CanvasLayer
         opt.Selected = 0;
         opt.ItemSelected += id => onSelect((int)id);
         return opt;
+    }
+
+    private void UpdateDesc()
+    {
+        _humanDesc.Text = _factions.Count == 0 ? "" : BlurbFor(_factions[_human].Faction.Id);
     }
 
     private void OnPlay()

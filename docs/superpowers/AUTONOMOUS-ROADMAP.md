@@ -42,7 +42,7 @@ Very cheap, numerous, fragile, and **regenerate HP when out of combat** (signatu
 - [x] **R7 — Unit static-sprite fallback** — DONE (code + first faction's art). `UnitView` now prefers `assets/units/<defId>.png` (per-def faction art) → else the reference animation sheet (by stat heuristic, unchanged) → else colored circle. Reads `u.DefId` directly (no ViewSync change). Static units get a small team-color ground pad for 4-player ownership; FlipH on facing E. Godot build 0 errors. PROOF: authored all 5 Mycel unit sprites (spore/crawler/spitter/brood/behemoth) — fungal creatures, purple-free for the key. Commit pending. (Remaining unit art for Concord/Driftborn/Vanguard-distinct = future R7-ART cycles; until authored those units keep the heuristic sheet.)
 - [ ] **R8 — Gameplay depth** (StarCraft-guided, golden-safe): e.g. a second tier-2 tech path, an area/anti-air consideration, more defensive variety. Pick the highest-value safe item each cycle.
 - [ ] **R9 — Balance pass** — run `PackValidator` across all factions; tune to the budget band; document matchup intent.
-- [ ] **R10 — Low-risk UI** (compile-checked): faction descriptions in the menu, build-button tooltips, etc.
+- [x] **R10 — Menu faction descriptions** — DONE (UI, render-only). MenuScreen shows an identity+playstyle blurb under the player's faction picker (FactionBlurbs table keyed by id: Vanguard/Concord/Driftborn/Mycel; custom packs get a generic line), updates on selection. Godot build clean. Commit pending. (Remaining UI ideas: build-button tooltips, lobby descriptions — future.)
 
 (Reprioritize each cycle by value × verifiability. New ideas append here.)
 
