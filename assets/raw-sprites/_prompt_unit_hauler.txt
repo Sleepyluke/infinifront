@@ -1,0 +1,5 @@
+STYLE: match the attached reference unit's exact art style, palette, outline weight and rendering — a SALVAGED SCRAP-TECH NOMAD faction (patchwork riveted scrap metal, rust-orange / sand-tan / faded-gray, exposed cables, jury-rigged; scrappy, NOT clean/high-tech, NOT organic). RTS ¾ top-down, clean outline, flat cel shading, no blur. Light upper-left. Magenta #FF00FF background only. Use ONLY rust-orange, sand-tan, faded-gray and a small red accent — NO purple, NO violet, NO magenta, NO pink. Faction accent: one small painted pure-red #FF0000 mark.
+
+SUBJECT: a "Hauler" — a heavy salvaged war-rig: a big armored scrap-metal truck/crawler plated with bolted junk-metal slabs, a large jury-rigged cannon on top, heavy wheels or treads, exposed pipes and a smokestack. Clearly the biggest, toughest unit — slow but powerful. Oriented facing toward the BOTTOM of the frame.
+
+CRITICAL COMPOSITION: render EXACTLY ONE vehicle, ONE single view, centered. A single game-unit sprite — NO second copy, NO panels, NO turnaround. One vehicle on a plain magenta #FF00FF background with a small margin and a soft short drop shadow. Match the reference's style and scale.
