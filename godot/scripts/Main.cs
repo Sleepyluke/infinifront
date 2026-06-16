@@ -26,8 +26,8 @@ public partial class Main : Node2D
         AddChild(Runner);
 
         var mapView = new MapView { Name = "MapView" };
-        mapView.Init(Runner.World.Map);
         AddChild(mapView);
+        mapView.Init(Runner);   // reads the world live so it can skip building/node cells (and survive world swaps)
 
         var viewSync = new ViewSync { Name = "ViewSync" };
         AddChild(viewSync);

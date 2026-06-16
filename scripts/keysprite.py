@@ -16,7 +16,7 @@ try:
 except ImportError:
     np = None
 
-LO, HI, RB_TOL, DESPILL = 30, 90, 70, 40  # magentaness thresholds / red-blue balance / edge despill
+LO, HI, RB_TOL, DESPILL = 10, 28, 70, 40  # aggressive cut: kill magenta + its soft drop-shadow penumbra
 
 
 def key(im):
