@@ -116,6 +116,7 @@ public sealed partial class SimWorld
         foreach (var cmd in commands) Apply(cmd);
         UpdateAi();
         UpdateCombat();
+        UpdateBuildingCombat();
         MoveUnits();
         UpdateHarvest();
         UpdateConstruction();
