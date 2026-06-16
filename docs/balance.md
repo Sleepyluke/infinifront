@@ -52,6 +52,7 @@ three of the four faction mechanics:
 | `RegeneratingShields` | Concord | **Partially** — `1.5 × MaxShield` is added to every unit |
 | `Regeneration` | Mycel | **No** — worth 0 power |
 | `Lifesteal` | Sanguine | **No** — worth 0 power |
+| `Splash` | Kiln | **No** — worth 0 power |
 | (none) | Reference, Driftborn | n/a |
 
 Consequence: a faction whose mechanic is free is getting real combat value the budget
@@ -144,6 +145,26 @@ chip damage; pays for it with the lowest raw efficiency in the game.
 
 **Mean eff 1.328** · band [0.797, 1.859] · all units inside.
 
+### The Kiln — splash-artillery (`Splash`, free)
+
+Identity: **molten-forge artillery** — slow (0.125–0.25), expensive, durable forged
+constructs whose *every* attack splashes nearby foes for half damage. Zone control and
+anti-swarm: devastating against clustered armies, helpless against nothing in particular
+except its own slowness. Pays for the free splash with the **lowest raw efficiency in the
+game**.
+
+| Unit | HP | Dmg | Rng | CD | Speed | Sight | Cost | Power | Eff |
+|------|---:|----:|----:|---:|------:|------:|-----:|------:|----:|
+| cinder (worker) | 45 | — | — | — | 0.250 | 6 | 80 | 104.5 | 1.306 |
+| ember | 60 | 7 | 4 | 12 | 0.188 | 8 | 120 | 144.3 | 1.202 |
+| slag | 70 | 9 | 5 | 14 | 0.188 | 8 | 140 | 163.1 | 1.165 |
+| bombard | 60 | 12 | 7 | 20 | 0.125 | 9 | 185 | 157.8 | 0.853 |
+| furnace | 240 | 26 | 6 | 22 | 0.125 | 7 | 330 | 376.3 | 1.140 |
+
+**Mean eff 1.133** · band [0.680, 1.586] · all units inside. `bombard` (0.853) is by design
+the least cost-efficient — a long-range (7) glass artillery piece you pay a premium for;
+its splash + reach is the value the budget can't see.
+
 ---
 
 ## Cross-faction comparison
@@ -158,6 +179,7 @@ The six factions side by side (the in-code "Vanguard" reference is byte-identica
 | **Concord** | RegeneratingShields | partial (+45/unit) | **1.562** | 1.476 | shield-wall |
 | **Mycel** | Regeneration | **no (0)** | **1.457** | 1.496 | regen-swarm |
 | **Sanguine** | Lifesteal | **no (0)** | **1.328** | 1.322 | lifesteal-predator |
+| **Kiln** | Splash | **no (0)** | **1.133** | 1.090 | molten splash-artillery |
 
 ("Combat only" strips the harvester — for Concord it also still contains the +45 shield
 on each combat unit.)
@@ -184,6 +206,14 @@ normal RTS tolerance. Reading each against the mechanic-pricing principle:
   validator call. **Fair in direction; magnitude unverified.**
 - **Driftborn (1.488)** — highest of the no-mechanic factions, which fits its
   fast-cheap-raider identity (you pay full raw efficiency but get no sustain). **Fair.**
+- **Kiln (1.133, free splash)** — the **lowest** raw efficiency of all six, ~21% under
+  Driftborn and ~14% under Sanguine. This is the **strongest** application of the
+  free-mechanic principle: splash (AoE every hit) is worth a great deal against grouped
+  armies, so Kiln's raw stats are heavily discounted *and* slowed (0.125–0.25 speed) to
+  pay for it. Direction is correct (well below baseline); like Sanguine, the magnitude is a
+  playtest question — splash value scales with how clumped the enemy fights, so against
+  spread-out micro Kiln could feel underpowered, against deathballs overpowered. **Fair in
+  direction; magnitude the most variance-prone of any faction.**
 
 ### The mechanic-pricing caveat (explicit)
 
@@ -235,13 +265,27 @@ Nothing here is enforced by code; it's the design target the numbers are meant t
   Sanguine wants one decisive sustained brawl (lifesteal compounds). Whoever forces their
   preferred fight cadence wins — micro-dependent, intended to be close.
 
+- **Kiln splash hard-counters the swarms (Mycel / Driftborn).** Splash damage on every
+  hit is precisely the answer to cheap, numerous, clustered bodies — the more units the
+  swarm packs into a fight, the more total damage each Kiln volley does. A Mycel crawler
+  ball or a Driftborn buggy swarm melts walking into ember/slag/bombard fire. **Kiln >
+  Mycel/Driftborn when they clump.**
+
+- **Kiln is checked by spread-out micro, flankers, and its own slowness.** Splash rewards
+  enemy clumping, so the counter is the opposite: spread units, attack from multiple
+  angles, and exploit Kiln's crippling speed (0.125–0.25) and the bombard's fragility
+  (60 HP at the back). Fast factions (Driftborn done right, Sanguine prowler, Mycel brood)
+  can flank and reach the soft artillery before it sieges. Burst that one-shots a unit
+  also denies splash its value-over-time. **Spread + flank + burst > Kiln.**
+
 - **Reference / Vanguard is the honest midpoint.** No mechanic, balanced stats — it has
   no free win or hard loss; it tests whether the player out-executes, which is the point
   of a reference faction.
 
 **Intended cycle (simplified):** Driftborn raids → punish slow Concord → but fold to
-Mycel/Sanguine sustain → which fold to Concord attrition + burst → and static defense
-checks Driftborn from the side. No faction sits at the top of every axis.
+Mycel/Sanguine sustain and to Kiln splash → which fold to Concord attrition + burst, and
+(for Kiln) to spread-out flanking that punishes its slowness → and static defense checks
+Driftborn from the side. No faction sits at the top of every axis.
 
 ---
 
