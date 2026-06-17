@@ -133,7 +133,8 @@ public partial class Hud : CanvasLayer
             {
                 var capturedDef = bdef; // capture for lambda
                 AddButton($"Build {capturedDef.Id} ({capturedDef.Spec.MineralCost})",
-                    () => _cmd.ArmBuildGhost(capturedDef), BuildingTip(capturedDef));
+                    () => _cmd.ArmBuildGhost(capturedDef), BuildingTip(capturedDef),
+                    $"res://assets/buildings/{capturedDef.Id}.png");
             }
         }
 
@@ -145,7 +146,8 @@ public partial class Hud : CanvasLayer
             {
                 var capturedUdef = udef; // capture for lambda
                 AddButton($"{capturedUdef.Id} ({capturedUdef.Spec.MineralCost})",
-                    () => _runner.Enqueue(new TrainCommand(p, b.Id, capturedUdef.Id)), UnitTip(capturedUdef));
+                    () => _runner.Enqueue(new TrainCommand(p, b.Id, capturedUdef.Id)), UnitTip(capturedUdef),
+                    $"res://assets/units/{capturedUdef.Id}.png");
             }
         }
 
@@ -185,10 +187,18 @@ public partial class Hud : CanvasLayer
         _lastButtonKey = (workerSel, _sel.SelectedBuilding, canTrain, commonStance);
     }
 
-    private void AddButton(string text, System.Action onPress, string tooltip = "")
+    private void AddButton(string text, System.Action onPress, string tooltip = "", string iconPath = "")
     {
         var btn = new Button { Text = text };
         btn.FocusMode = Control.FocusModeEnum.None;
+        // Thumbnail from the entity's own art (assets/units|buildings/<id>.png), if imported.
+        // ResourceLoader.Exists is false for an un-imported PNG, so this degrades to text-only.
+        if (iconPath.Length > 0 && ResourceLoader.Exists(iconPath))
+        {
+            btn.Icon = GD.Load<Texture2D>(iconPath);
+            btn.ExpandIcon = true;                              // shrink the ~256px art to button size
+            btn.CustomMinimumSize = new Vector2(0, 44);
+        }
         if (tooltip.Length > 0) btn.TooltipText = tooltip;
         btn.Pressed += onPress;
         _buttons.AddChild(btn);
