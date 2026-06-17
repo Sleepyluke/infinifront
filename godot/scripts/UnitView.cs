@@ -23,6 +23,13 @@ public partial class UnitView : Node2D
     private bool _eight;        // using an 8-facing UniRig-baked sheet (walk-0..7 / attack-0..7)
     private int _facingIdx;     // 0..7 when _eight
 
+    // Render-only combat feedback (no sim/golden touch): a red damage flash when HP drops and a
+    // short forward lunge when the unit fires — gives even the static-sprite units a visible fire cue.
+    private double _hitFlash;     // seconds of red damage tint remaining
+    private double _fireLunge;    // seconds of attack lunge remaining
+    private const double HitFlashSecs = 0.18, FireLungeSecs = 0.12;
+    private const float LungePx = 5f;
+
     // One per player slot. Must cover the max players a match can have (4 — see MatchSetup corners),
     // or rendering a higher-id player's unit throws IndexOutOfRange and aborts the match build.
     public static readonly Color[] PlayerColors =
@@ -86,6 +93,7 @@ public partial class UnitView : Node2D
     {
         _prevPos = _currPos;
         _currPos = RenderMath.ToPx(u.Position);
+        if (u.Hp < _hp) _hitFlash = HitFlashSecs;   // HP dropped this tick → red damage flash
         _hp = u.Hp;
         if (u.Hp > _maxHp) _maxHp = u.Hp;
         _shieldHp = u.ShieldHp;
@@ -96,7 +104,7 @@ public partial class UnitView : Node2D
         if (moving && _eight) _facingIdx = EightFacingSheet.FacingIndex(delta);
 
         bool justFired = u.Weapon is not null && u.Weapon.CooldownRemaining == u.Weapon.CooldownTicks && u.AttackTargetId != 0;
-        if (justFired) _attacking = true;
+        if (justFired) { _attacking = true; _fireLunge = FireLungeSecs; }
 
         _isPatrolling = u.IsPatrolling;
 
@@ -178,8 +186,46 @@ public partial class UnitView : Node2D
 
     public override void _Process(double delta)
     {
-        Position = _prevPos.Lerp(_currPos, _runner.Alpha);
+        var pos = _prevPos.Lerp(_currPos, _runner.Alpha);
+        if (_fireLunge > 0 && !_dying)
+        {
+            _fireLunge = System.Math.Max(0, _fireLunge - delta);
+            pos += FacingVec() * LungePx * (float)(_fireLunge / FireLungeSecs);   // recoil/lunge toward target
+        }
+        Position = pos;
+
+        // Red damage tint that fades back to white, applied to whichever sprite node is active.
+        var vis = (CanvasItem?)_sprite ?? _staticSprite;
+        if (vis is not null)
+        {
+            if (_hitFlash > 0 && !_dying)
+            {
+                _hitFlash = System.Math.Max(0, _hitFlash - delta);
+                float t = (float)(_hitFlash / HitFlashSecs);
+                vis.Modulate = Colors.White.Lerp(new Color(1f, 0.35f, 0.3f), t);
+            }
+            else if (vis.Modulate != Colors.White) vis.Modulate = Colors.White;
+        }
         QueueRedraw();
+    }
+
+    /// <summary>Screen-space unit direction (Y down) the unit currently faces — drives the fire lunge.
+    /// FaceToward points this at the attack target, so the lunge reads as a strike toward the enemy.</summary>
+    private Vector2 FacingVec()
+    {
+        if (_eight)
+        {
+            float a = Mathf.DegToRad(_facingIdx * 45f);   // matches EightFacingSheet.FacingIndex
+            return new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+        }
+        return _facing switch
+        {
+            "N" => new Vector2(0, -1),
+            "S" => new Vector2(0, 1),
+            "E" => new Vector2(1, 0),
+            "W" => new Vector2(-1, 0),
+            _ => Vector2.Zero,
+        };
     }
 
     public override void _Draw()
