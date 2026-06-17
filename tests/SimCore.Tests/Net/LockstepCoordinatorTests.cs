@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using SimCore.Math;
 using SimCore.Net;
 using SimCore.Sim;
@@ -136,5 +137,55 @@ public class LockstepCoordinatorTests
         c.RecordLocalHash(5, 0xABCUL);
         c.ReceiveHash(6, 1, 0xDEFUL); // different tick -> not compared
         Assert.False(c.Desynced);
+    }
+
+    // ----- Turret-in-lockstep integration -----
+    // The Sentry Turret is the only recent change that touched HASHED sim state (StateHasher folds
+    // Building.Weapon when present). The golden trajectory scenario is towerless, so it never proves
+    // a weaponed building survives the real multiplayer path. This drives two identical turret worlds
+    // through the coordinator's merged command stream (real frames crossing both ways) and asserts the
+    // per-step hash sequences stay byte-identical — the turret's cooldown folded into every hash. A
+    // turret-induced desync (e.g. weapon state hashed under non-deterministic iteration) would split them.
+    [Fact]
+    public void Turret_World_Stays_In_Sync_Through_Lockstep()
+    {
+        var worldA = TurretMatchWorld();
+        var worldB = TurretMatchWorld();
+        var a = new LockstepCoordinator(localPlayerId: 0, new[] { 0, 1 }, inputDelay: 2);
+        var b = new LockstepCoordinator(localPlayerId: 1, new[] { 0, 1 }, inputDelay: 2);
+        var hashesA = new List<ulong>();
+        var hashesB = new List<ulong>();
+        for (int t = 0; t < 90; t++)
+        {
+            // Each peer issues real move frames for its OWN units; they cross the wire and merge.
+            var fa = a.SubmitLocal(t % 5 == 0 ? MoveFor(worldA, 0, 12, 12) : System.Array.Empty<Command>());
+            var fb = b.SubmitLocal(t % 7 == 0 ? MoveFor(worldB, 1, 4, 5) : System.Array.Empty<Command>());
+            b.Receive(fa);
+            a.Receive(fb);
+            while (a.TryDequeueStep(out var ma)) { worldA.Step(ma.ToArray()); hashesA.Add(StateHasher.Hash(worldA)); }
+            while (b.TryDequeueStep(out var mb)) { worldB.Step(mb.ToArray()); hashesB.Add(StateHasher.Hash(worldB)); }
+        }
+        Assert.Equal(hashesA, hashesB);   // identical per-step hash sequence on both peers — turret cooldown included
+        Assert.NotEmpty(hashesA);
+    }
+
+    private static SimWorld TurretMatchWorld()
+    {
+        var w = new SimWorld(new MapGrid(24, 24), seed: 7, playerCount: 4, faction: null);
+        w.FogEnabled = false;
+        w.AddCompletedBuilding(0, ReferenceSpecs.SentryTurret, 4, 4, "tower");
+        w.SpawnUnit(0, w.Map.CellCenter(2, 18), Fix.FromInt(1), hp: 50);   // owner's units, away from combat
+        w.SpawnUnit(0, w.Map.CellCenter(3, 18), Fix.FromInt(1), hp: 50);
+        w.SpawnUnit(1, w.Map.CellCenter(6, 6), Fix.FromInt(1), hp: 80);    // in turret range → it fires (cooldown ticks)
+        w.SpawnUnit(1, w.Map.CellCenter(7, 6), Fix.FromInt(1), hp: 80);
+        return w;
+    }
+
+    private static Command[] MoveFor(SimWorld w, int player, int cx, int cy)
+    {
+        var ids = w.Units.Where(u => u.OwnerId == player).Select(u => u.Id).ToArray();
+        return ids.Length == 0
+            ? System.Array.Empty<Command>()
+            : new Command[] { new MoveCommand(player, ids, w.Map.CellCenter(cx, cy)) };
     }
 }
