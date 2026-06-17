@@ -12,6 +12,10 @@ public partial class SelectionController : Node2D
     public readonly HashSet<int> SelectedUnits = new();
     public int SelectedBuilding { get; private set; } // 0 = none
 
+    // Control groups: Ctrl+1..9 binds the current selection, 1..9 recalls it. Render-side only —
+    // stored ids are re-validated against live units at recall, so dead/enemy ids are dropped.
+    private readonly Dictionary<int, int[]> _groups = new();
+
     private ViewSync _view = null!;
     private SimRunner _runner = null!;
     private bool _dragging;
@@ -45,6 +49,13 @@ public partial class SelectionController : Node2D
                 break;
             }
 
+            // Control groups: top-row 1..9 (Key1..Key9 are consecutive in Godot.Key).
+            // Ctrl held → bind the current selection; otherwise → recall it.
+            case InputEventKey { Pressed: true, Echo: false } k when k.Keycode is >= Key.Key1 and <= Key.Key9:
+                HandleControlGroup((int)(k.Keycode - Key.Key1) + 1, k.CtrlPressed);
+                GetViewport().SetInputAsHandled();
+                break;
+
             case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }:
                 _dragging = true;
                 _dragStart = GetGlobalMousePosition();
@@ -63,6 +74,25 @@ public partial class SelectionController : Node2D
                 break;
         }
         if (_dragging) QueueRedraw();
+    }
+
+    /// <summary>Bind (Ctrl) snapshots the current selected unit ids; recall replaces the selection
+    /// with that group's still-living, still-owned members. Buildings are not grouped.</summary>
+    private void HandleControlGroup(int group, bool bind)
+    {
+        if (bind)
+        {
+            if (SelectedUnits.Count == 0) { _groups.Remove(group); return; }
+            _groups[group] = SelectedUnits.ToArray();
+            return;
+        }
+        if (!_groups.TryGetValue(group, out var ids)) return;
+        SelectedUnits.Clear();
+        SelectedBuilding = 0;
+        foreach (var id in ids)
+            if (_view.Units.TryGetValue(id, out var v) && v.OwnerId == ControlledPlayer)
+                SelectedUnits.Add(id);
+        ApplyHighlights();
     }
 
     private void ClickSelect(Vector2 worldPx, bool additive)
