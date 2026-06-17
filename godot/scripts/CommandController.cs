@@ -26,6 +26,7 @@ public partial class CommandController : Node2D
 
     public override void _UnhandledInput(InputEvent e)
     {
+        if (HelpOverlay.IsOpen) return;   // controls cheat-sheet is up → ignore gameplay input
         switch (e)
         {
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.A } when _ghostDef is null && _sel.SelectedUnits.Count > 0:

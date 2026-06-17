@@ -9,6 +9,10 @@ public partial class HelpOverlay : CanvasLayer
     private Control _root = null!;
     private Label _hint = null!;
 
+    /// <summary>True while the cheat-sheet is up — sibling input handlers early-return on this so
+    /// hotkeys (Delete, Tab, control groups, fog…) don't fire blind behind the panel.</summary>
+    public static bool IsOpen { get; private set; }
+
     private const string ControlsText =
         "CONTROLS\n\n" +
         "Left-drag / click — select units      Shift+click — add to selection\n" +
@@ -26,6 +30,7 @@ public partial class HelpOverlay : CanvasLayer
     public override void _Ready()
     {
         Layer = 50;   // above the HUD CanvasLayer (default layer 1)
+        IsOpen = false;   // a fresh overlay (new match / restart) starts closed
 
         _root = new Control { Visible = false };
         _root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
@@ -65,6 +70,7 @@ public partial class HelpOverlay : CanvasLayer
         if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F1 or Key.H })
         {
             _root.Visible = !_root.Visible;
+            IsOpen = _root.Visible;
             _hint.Visible = !_root.Visible;   // hide the hint while the full panel is open
             GetViewport().SetInputAsHandled();
         }

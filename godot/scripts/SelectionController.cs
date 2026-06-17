@@ -28,6 +28,7 @@ public partial class SelectionController : Node2D
 
     public override void _UnhandledInput(InputEvent e)
     {
+        if (HelpOverlay.IsOpen) return;   // controls cheat-sheet is up → ignore gameplay input
         switch (e)
         {
             // Debug-only "switch sides" hotkey — disabled in networked play (it would let a peer
@@ -87,11 +88,11 @@ public partial class SelectionController : Node2D
             return;
         }
         if (!_groups.TryGetValue(group, out var ids)) return;
+        var live = ids.Where(id => _view.Units.TryGetValue(id, out var v) && v.OwnerId == ControlledPlayer).ToList();
+        if (live.Count == 0) return;   // dead / fat-fingered group → leave the current selection untouched
         SelectedUnits.Clear();
         SelectedBuilding = 0;
-        foreach (var id in ids)
-            if (_view.Units.TryGetValue(id, out var v) && v.OwnerId == ControlledPlayer)
-                SelectedUnits.Add(id);
+        foreach (var id in live) SelectedUnits.Add(id);
         ApplyHighlights();
     }
 

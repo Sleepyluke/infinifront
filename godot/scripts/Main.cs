@@ -185,6 +185,7 @@ public partial class Main : Node2D
 
     public override void _UnhandledKeyInput(InputEvent e)
     {
+        if (HelpOverlay.IsOpen) return;   // controls cheat-sheet is up → ignore the fog toggle
         if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F3 })
         {
             Runner.World.FogEnabled = !Runner.World.FogEnabled;
