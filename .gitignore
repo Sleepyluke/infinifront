@@ -4,3 +4,9 @@ obj/
 *.user
 TestResults/
 godot/.godot/
+
+# Animation-pipeline scratch (regenerable): assembled intermediate sheets + the
+# HTML strip-preview. The committed inputs (_anim_<id>_*.png strips, _prompt_*.txt)
+# and the final godot/assets/units/<id>.png are kept; these outputs are not.
+assets/raw-sprites/_sheet_*.png
+assets/raw-sprites/_anim_preview.html
