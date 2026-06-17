@@ -20,6 +20,8 @@ public partial class UnitView : Node2D
     private bool _attacking;
     private bool _dying;
     private bool _isPatrolling;
+    private bool _eight;        // using an 8-facing UniRig-baked sheet (walk-0..7 / attack-0..7)
+    private int _facingIdx;     // 0..7 when _eight
 
     // One per player slot. Must cover the max players a match can have (4 — see MatchSetup corners),
     // or rendering a higher-id player's unit throws IndexOutOfRange and aborts the match build.
@@ -45,9 +47,20 @@ public partial class UnitView : Node2D
         //  3) the reference sheet by stat-heuristic key                → animate (legacy / artless packs)
         //  4) a colored silhouette                                     → _Draw fallback
         // SheetAnimator.Load validates the grid, so a static PNG at the def path returns null at (1).
+        // Priority 0: an 8-facing UniRig-baked sheet at assets/units/anim/<defId>8.png → animate (8-way).
+        var eight = EightFacingSheet.Load(u.DefId);
+        if (eight is not null)
+        {
+            _eight = true;
+            _sprite = new AnimatedSprite2D { SpriteFrames = eight, Centered = true, TextureFilter = TextureFilterEnum.Nearest };
+            _sprite.AnimationFinished += () => _attacking = false;
+            AddChild(_sprite);
+            _sprite.Play("walk-0");
+            _sprite.Pause();   // idle = hold the walk pose until the unit moves
+        }
         var defPath = $"res://assets/units/{u.DefId}.png";
-        var frames = SheetAnimator.Load(u.DefId);
-        if (frames is null && !ResourceLoader.Exists(defPath))
+        var frames = _eight ? null : SheetAnimator.Load(u.DefId);
+        if (!_eight && frames is null && !ResourceLoader.Exists(defPath))
             frames = SheetAnimator.Load(unitKey); // no own art → fall back to the stat-class sheet
         if (frames is not null)
         {
@@ -56,7 +69,7 @@ public partial class UnitView : Node2D
             AddChild(_sprite);
             _sprite.Play("idle-S");
         }
-        else if (ResourceLoader.Exists(defPath)) // file exists but isn't a sheet → static single-frame
+        else if (!_eight && ResourceLoader.Exists(defPath)) // file exists but isn't a sheet → static single-frame
         {
             var tex = ResourceLoader.Load<Texture2D>(defPath);
             const float targetH = 46f;
@@ -80,6 +93,7 @@ public partial class UnitView : Node2D
         var delta = _currPos - _prevPos;
         bool moving = delta.LengthSquared() > 0.01f;
         if (moving) _facing = RenderMath.FacingOf(delta);
+        if (moving && _eight) _facingIdx = EightFacingSheet.FacingIndex(delta);
 
         bool justFired = u.Weapon is not null && u.Weapon.CooldownRemaining == u.Weapon.CooldownTicks && u.AttackTargetId != 0;
         if (justFired) _attacking = true;
@@ -93,11 +107,35 @@ public partial class UnitView : Node2D
     public void FaceToward(Vector2 worldPx)
     {
         var d = worldPx - _currPos;
-        if (d.LengthSquared() > 0.01f) _facing = RenderMath.FacingOf(d);
+        if (d.LengthSquared() > 0.01f)
+        {
+            _facing = RenderMath.FacingOf(d);
+            if (_eight) _facingIdx = EightFacingSheet.FacingIndex(d);
+        }
     }
 
     private void PlayAnim(string baseName)
     {
+        if (_eight)
+        {
+            if (_sprite is null) return;
+            if (baseName == "attack")
+            {
+                var a = $"attack-{_facingIdx}";
+                if ((string)_sprite.Animation != a) _sprite.Play(a);
+                return;
+            }
+            var wa = $"walk-{_facingIdx}";
+            if (baseName == "walk")
+            {
+                if ((string)_sprite.Animation != wa || !_sprite.IsPlaying()) _sprite.Play(wa);
+                return;
+            }
+            // idle: hold the current facing's walk pose, paused
+            if ((string)_sprite.Animation != wa) _sprite.Play(wa);
+            _sprite.Pause();
+            return;
+        }
         if (_staticSprite is not null) { _staticSprite.FlipH = _facing == "E"; return; }
         if (_sprite is null) return;
         var storedFacing = _facing == "E" ? "W" : _facing;
@@ -113,6 +151,7 @@ public partial class UnitView : Node2D
         _prevPos = _currPos;
         Selected = false;
         _dying = true;
+        if (_eight) { QueueFree(); return; }   // 8-facing sheets have no death clip
         if (_sprite is null) { QueueFree(); return; }
         _sprite.FlipH = false;
         _sprite.Play("death-S");
