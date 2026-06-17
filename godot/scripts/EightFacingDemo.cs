@@ -4,8 +4,8 @@ using System.Collections.Generic;
 namespace LlmRts.Godot;
 
 /// <summary>Standalone in-engine preview of the UniRig-baked 8-facing sheets (run with F6 on
-/// EightFacingDemo.tscn). Shows the crawler + aegis driving AnimatedSprite2D: auto-cycles through
-/// all 8 facings, SPACE plays the attack at the current facing. Render-only; touches no sim.</summary>
+/// EightFacingDemo.tscn). Shows the crawler + aegis driving AnimatedSprite2D, auto-cycling all 8
+/// facings. Keys: SPACE attack, D death, I idle, W walk. Render-only; touches no sim.</summary>
 public partial class EightFacingDemo : Node2D
 {
     private sealed class Row
@@ -18,6 +18,7 @@ public partial class EightFacingDemo : Node2D
     private readonly List<Row> _rows = new();
     private int _facing;
     private double _facTimer;
+    private string _clip = "walk";   // current looping clip (idle/walk)
 
     public override void _Ready()
     {
@@ -25,7 +26,7 @@ public partial class EightFacingDemo : Node2D
         AddUnit("aegis", new Vector2(640, 340));
         AddChild(new Label
         {
-            Text = "UniRig 8-facing bake  —  SPACE: attack   (facing auto-cycles 0..7 each second)",
+            Text = "UniRig 8-facing bake — SPACE attack · D death · I idle · W walk   (facing auto-cycles)",
             Position = new Vector2(20, 20),
         });
     }
@@ -47,16 +48,27 @@ public partial class EightFacingDemo : Node2D
             TextureFilter = TextureFilterEnum.Nearest,
         };
         AddChild(s);
-        // After an attack finishes, drop back to the walk loop at the current facing.
+        // A one-shot clip (attack) drops back to the current looping clip; death stays collapsed.
         s.AnimationFinished += () =>
         {
-            if (((string)s.Animation).StartsWith("attack"))
-                s.Play($"walk-{_facing}");
+            var a = (string)s.Animation;
+            if (a.StartsWith("attack")) PlayOn(s, $"{_clip}-{_facing}");
         };
-        s.Play("walk-0");
-        var lbl = new Label { Position = pos + new Vector2(-70, 150) };
+        s.Play($"{_clip}-0");
+        var lbl = new Label { Position = pos + new Vector2(-70, 155) };
         AddChild(lbl);
         _rows.Add(new Row { Sprite = s, Label = lbl, Name = key });
+    }
+
+    private static void PlayOn(AnimatedSprite2D s, string anim)
+    {
+        if (s.SpriteFrames.HasAnimation(anim)) s.Play(anim);
+    }
+
+    private bool Busy(AnimatedSprite2D s)
+    {
+        var a = (string)s.Animation;
+        return (a.StartsWith("attack") || a.StartsWith("death")) && s.IsPlaying();
     }
 
     public override void _Process(double delta)
@@ -67,8 +79,8 @@ public partial class EightFacingDemo : Node2D
             _facTimer = 0;
             _facing = (_facing + 1) % 8;
             foreach (var r in _rows)
-                if (!((string)r.Sprite.Animation).StartsWith("attack"))
-                    r.Sprite.Play($"walk-{_facing}");
+                if (!Busy(r.Sprite))
+                    PlayOn(r.Sprite, $"{_clip}-{_facing}");
         }
         foreach (var r in _rows)
             r.Label.Text = $"{r.Name}   {r.Sprite.Animation}";
@@ -76,8 +88,13 @@ public partial class EightFacingDemo : Node2D
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventKey { Pressed: true, Keycode: Key.Space })
-            foreach (var r in _rows)
-                r.Sprite.Play($"attack-{_facing}");
+        if (@event is not InputEventKey { Pressed: true } k) return;
+        switch (k.Keycode)
+        {
+            case Key.Space: foreach (var r in _rows) PlayOn(r.Sprite, $"attack-{_facing}"); break;
+            case Key.D: foreach (var r in _rows) PlayOn(r.Sprite, $"death-{_facing}"); break;
+            case Key.I: _clip = "idle"; foreach (var r in _rows) PlayOn(r.Sprite, $"idle-{_facing}"); break;
+            case Key.W: _clip = "walk"; foreach (var r in _rows) PlayOn(r.Sprite, $"walk-{_facing}"); break;
+        }
     }
 }

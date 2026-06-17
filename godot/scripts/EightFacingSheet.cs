@@ -13,10 +13,14 @@ public static class EightFacingSheet
 {
     private const int Cell = 64, Cols = 16, Fac = 8;
 
+    // Clip block order in the sheet. A sheet only needs to contain the leading blocks it uses,
+    // so a walk+attack-only sheet (2 blocks) and a full walk/attack/idle/death sheet both load.
     private static readonly (string Name, int Block, float Fps, bool Loop)[] Clips =
     {
         ("walk", 0, 12f, true),
         ("attack", 1, 16f, false),
+        ("idle", 2, 8f, true),
+        ("death", 3, 10f, false),
     };
 
     public static SpriteFrames? Load(string unitKey)
@@ -24,11 +28,14 @@ public static class EightFacingSheet
         var path = $"res://assets/units/anim/{unitKey}8.png";
         if (!ResourceLoader.Exists(path)) return null;
         var tex = GD.Load<Texture2D>(path);
-        // Validate the 16-col × (8*clips)-row, 64px grid; otherwise treat it as not-a-sheet.
-        if (tex.GetWidth() < Cols * Cell || tex.GetHeight() < Clips.Length * Fac * Cell) return null;
+        // Must be at least the 16-col grid wide and contain block 0 (walk) — 8 rows of 64px.
+        if (tex.GetWidth() < Cols * Cell || tex.GetHeight() < Fac * Cell) return null;
         var frames = new SpriteFrames();
         if (frames.HasAnimation("default")) frames.RemoveAnimation("default");
         foreach (var (name, block, fps, loop) in Clips)
+        {
+            // Skip clips whose rows aren't present in this sheet (variable clip count).
+            if ((block + 1) * Fac * Cell > tex.GetHeight()) continue;
             for (int fa = 0; fa < Fac; fa++)
             {
                 var anim = $"{name}-{fa}";
@@ -39,6 +46,7 @@ public static class EightFacingSheet
                 for (int c = 0; c < Cols; c++)
                     frames.AddFrame(anim, new AtlasTexture { Atlas = tex, Region = new Rect2(c * Cell, row * Cell, Cell, Cell) });
             }
+        }
         return frames;
     }
 

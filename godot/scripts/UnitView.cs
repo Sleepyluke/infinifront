@@ -55,8 +55,8 @@ public partial class UnitView : Node2D
             _sprite = new AnimatedSprite2D { SpriteFrames = eight, Centered = true, TextureFilter = TextureFilterEnum.Nearest };
             _sprite.AnimationFinished += () => _attacking = false;
             AddChild(_sprite);
-            _sprite.Play("walk-0");
-            _sprite.Pause();   // idle = hold the walk pose until the unit moves
+            if (eight.HasAnimation("idle-0")) { _sprite.Play("idle-0"); }
+            else { _sprite.Play("walk-0"); _sprite.Pause(); }   // idle = hold the walk pose until the unit moves
         }
         var defPath = $"res://assets/units/{u.DefId}.png";
         var frames = _eight ? null : SheetAnimator.Load(u.DefId);
@@ -131,9 +131,17 @@ public partial class UnitView : Node2D
                 if ((string)_sprite.Animation != wa || !_sprite.IsPlaying()) _sprite.Play(wa);
                 return;
             }
-            // idle: hold the current facing's walk pose, paused
-            if ((string)_sprite.Animation != wa) _sprite.Play(wa);
-            _sprite.Pause();
+            // idle: dedicated idle clip if the sheet has one, else hold the walk pose paused
+            var idle = $"idle-{_facingIdx}";
+            if (_sprite.SpriteFrames.HasAnimation(idle))
+            {
+                if ((string)_sprite.Animation != idle || !_sprite.IsPlaying()) _sprite.Play(idle);
+            }
+            else
+            {
+                if ((string)_sprite.Animation != wa) _sprite.Play(wa);
+                _sprite.Pause();
+            }
             return;
         }
         if (_staticSprite is not null) { _staticSprite.FlipH = _facing == "E"; return; }
@@ -151,7 +159,17 @@ public partial class UnitView : Node2D
         _prevPos = _currPos;
         Selected = false;
         _dying = true;
-        if (_eight) { QueueFree(); return; }   // 8-facing sheets have no death clip
+        if (_eight)
+        {
+            var dn = $"death-{_facingIdx}";
+            if (_sprite is not null && _sprite.SpriteFrames.HasAnimation(dn))
+            {
+                _sprite.Play(dn);
+                _sprite.AnimationFinished += QueueFree;   // collapse, then remove the corpse
+            }
+            else QueueFree();
+            return;
+        }
         if (_sprite is null) { QueueFree(); return; }
         _sprite.FlipH = false;
         _sprite.Play("death-S");
