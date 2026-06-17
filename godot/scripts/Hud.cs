@@ -191,13 +191,13 @@ public partial class Hud : CanvasLayer
     {
         var btn = new Button { Text = text };
         btn.FocusMode = Control.FocusModeEnum.None;
+        btn.CustomMinimumSize = new Vector2(0, 44);             // uniform row height with or without an icon
         // Thumbnail from the entity's own art (assets/units|buildings/<id>.png), if imported.
         // ResourceLoader.Exists is false for an un-imported PNG, so this degrades to text-only.
         if (iconPath.Length > 0 && ResourceLoader.Exists(iconPath))
         {
             btn.Icon = GD.Load<Texture2D>(iconPath);
             btn.ExpandIcon = true;                              // shrink the ~256px art to button size
-            btn.CustomMinimumSize = new Vector2(0, 44);
         }
         if (tooltip.Length > 0) btn.TooltipText = tooltip;
         btn.Pressed += onPress;

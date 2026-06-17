@@ -25,10 +25,14 @@ public partial class UnitView : Node2D
 
     // Render-only combat feedback (no sim/golden touch): a red damage flash when HP drops and a
     // short forward lunge when the unit fires — gives even the static-sprite units a visible fire cue.
-    private double _hitFlash;     // seconds of red damage tint remaining
+    private double _flash;        // seconds of damage tint remaining
+    private Color _flashColor = Colors.White;
+    private bool _flashActive;    // drives the one-shot reset back to White (intent-driven, not float-eq)
     private double _fireLunge;    // seconds of attack lunge remaining
-    private const double HitFlashSecs = 0.18, FireLungeSecs = 0.12;
+    private const double FlashSecs = 0.18, FireLungeSecs = 0.12;
     private const float LungePx = 5f;
+    private static readonly Color HitColor = new(1f, 0.35f, 0.3f);      // HP damage → red
+    private static readonly Color ShieldColor = new(0.4f, 0.85f, 1f);   // shield absorbed → cyan
 
     // One per player slot. Must cover the max players a match can have (4 — see MatchSetup corners),
     // or rendering a higher-id player's unit throws IndexOutOfRange and aborts the match build.
@@ -93,7 +97,8 @@ public partial class UnitView : Node2D
     {
         _prevPos = _currPos;
         _currPos = RenderMath.ToPx(u.Position);
-        if (u.Hp < _hp) _hitFlash = HitFlashSecs;   // HP dropped this tick → red damage flash
+        if (u.Hp < _hp) { _flash = FlashSecs; _flashColor = HitColor; }                       // HP lost → red
+        else if (u.ShieldHp < _shieldHp) { _flash = FlashSecs; _flashColor = ShieldColor; }   // shield absorbed → cyan
         _hp = u.Hp;
         if (u.Hp > _maxHp) _maxHp = u.Hp;
         _shieldHp = u.ShieldHp;
@@ -194,17 +199,17 @@ public partial class UnitView : Node2D
         }
         Position = pos;
 
-        // Red damage tint that fades back to white, applied to whichever sprite node is active.
+        // Damage tint (red HP / cyan shield) that fades back to white, on whichever sprite is active.
         var vis = (CanvasItem?)_sprite ?? _staticSprite;
         if (vis is not null)
         {
-            if (_hitFlash > 0 && !_dying)
+            if (_flash > 0 && !_dying)
             {
-                _hitFlash = System.Math.Max(0, _hitFlash - delta);
-                float t = (float)(_hitFlash / HitFlashSecs);
-                vis.Modulate = Colors.White.Lerp(new Color(1f, 0.35f, 0.3f), t);
+                _flash = System.Math.Max(0, _flash - delta);
+                vis.Modulate = Colors.White.Lerp(_flashColor, (float)(_flash / FlashSecs));
+                _flashActive = true;
             }
-            else if (vis.Modulate != Colors.White) vis.Modulate = Colors.White;
+            else if (_flashActive) { vis.Modulate = Colors.White; _flashActive = false; }
         }
         QueueRedraw();
     }
