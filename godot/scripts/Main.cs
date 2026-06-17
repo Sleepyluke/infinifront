@@ -70,6 +70,8 @@ public partial class Main : Node2D
         hud.AddChild(_minimap);
         _minimap.Init(Runner, camera, Selection);
 
+        AddChild(new HelpOverlay { Name = "Help" });   // F1/H controls cheat-sheet (render-only)
+
         GD.Print($"LlmRts boot OK units={Runner.World.Units.Count} buildings={Runner.World.Buildings.Count}");
 
         if (MatchConfig.IsNetworked)
